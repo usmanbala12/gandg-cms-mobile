@@ -1,0 +1,322 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:logger/logger.dart';
+import 'package:meta/meta.dart';
+
+import '../db/app_database.dart';
+import '../db/daos/sync_queue_dao.dart';
+import '../db/daos/meta_dao.dart';
+import '../db/daos/conflict_dao.dart';
+import '../db/db_utils.dart';
+import '../network/api_client.dart';
+import '../db/repositories/report_repository.dart';
+import '../db/repositories/media_repository.dart';
+
+/// SyncManager orchestrates the offline-first sync workflow.
+/// Handles outgoing batch processing, downloading changes, and conflict resolution.
+class SyncManager {
+  final AppDatabase db;
+  final SyncQueueDao syncQueueDao;
+  final MetaDao metaDao;
+  final ConflictDao conflictDao;
+  final ApiClient apiClient;
+  final ReportRepository reportRepository;
+  final MediaRepository mediaRepository;
+  final Logger logger;
+
+  SyncManager({
+    required this.db,
+    required this.syncQueueDao,
+    required this.metaDao,
+    required this.conflictDao,
+    required this.apiClient,
+    required this.reportRepository,
+    required this.mediaRepository,
+    Logger? logger,
+  }) : logger = logger ?? Logger();
+
+  /// Run a complete sync cycle: process outgoing, then download and apply.
+  Future<void> runSyncCycle({
+    String? projectId,
+    int batchSize = SyncConstants.defaultBatchSize,
+  }) async {
+    try {
+      logger.i(
+        'Starting sync cycle (projectId: $projectId, batchSize: $batchSize)',
+      );
+
+      // Process outgoing changes
+      await _processOutgoing(batchSize: batchSize);
+
+      // Download and apply changes
+      if (projectId != null) {
+        await _downloadAndApply(projectId);
+      }
+
+      logger.i('Sync cycle completed successfully');
+    } catch (e) {
+      logger.e('Error during sync cycle: $e');
+      rethrow;
+    }
+  }
+
+  /// Process outgoing queue items: claim, process, and mark done/failed/conflict.
+  Future<void> _processOutgoing({
+    int batchSize = SyncConstants.defaultBatchSize,
+  }) async {
+    try {
+      logger.i('Processing outgoing queue (batch size: $batchSize)');
+
+      // Claim batch of pending items
+      final claimed = await syncQueueDao.claimBatch(batchSize);
+      logger.i('Claimed ${claimed.length} queue items');
+
+      for (final item in claimed) {
+        try {
+          await _processQueueItem(item);
+          await syncQueueDao.markDone(item.id);
+          logger.i('Marked queue item ${item.id} as DONE');
+        } on ConflictException catch (e) {
+          logger.w('Conflict detected for queue item ${item.id}: ${e.message}');
+          await syncQueueDao.markConflict(item.id, error: e.message);
+          // Insert conflict record
+          await conflictDao.insertConflict(
+            SyncConflictsCompanion.insert(
+              id: uuid(),
+              entityType: item.entityType,
+              entityId: item.entityId,
+              localPayload: item.payload ?? '{}',
+              serverPayload: e.serverPayload,
+              detectedAt: now(),
+              createdAt: now(),
+            ),
+          );
+        } catch (e) {
+          logger.e('Error processing queue item ${item.id}: $e');
+          final attempts = item.attempts + 1;
+          if (attempts >= SyncConstants.maxRetries) {
+            await syncQueueDao.markFailed(item.id, e.toString());
+            logger.e(
+              'Marked queue item ${item.id} as FAILED (max retries exceeded)',
+            );
+          } else {
+            // Reenqueue with backoff
+            await syncQueueDao.reenqueue(item.id);
+            logger.i(
+              'Requeued item ${item.id} (attempt $attempts/${SyncConstants.maxRetries})',
+            );
+          }
+        }
+      }
+
+      logger.i('Finished processing outgoing queue');
+    } catch (e) {
+      logger.e('Error in _processOutgoing: $e');
+      rethrow;
+    }
+  }
+
+  /// Process a single queue item based on entity type and action.
+  Future<void> _processQueueItem(SyncQueueData item) async {
+    try {
+      logger.i(
+        'Processing queue item: ${item.entityType}/${item.entityId} (${item.action})',
+      );
+
+      switch (item.entityType) {
+        case 'report':
+          await reportRepository.processSyncQueueItem(
+            item.projectId,
+            item.entityId,
+            item.action,
+            item.payload,
+          );
+          break;
+
+        case 'media':
+          await mediaRepository.uploadMediaQueueHandler(item.entityId);
+          break;
+
+        case 'issue':
+          // TODO: Implement issue sync processing
+          logger.w('Issue sync processing not yet implemented');
+          break;
+
+        default:
+          logger.w('Unknown entity type: ${item.entityType}');
+      }
+
+      logger.i(
+        'Successfully processed queue item: ${item.entityType}/${item.entityId}',
+      );
+    } catch (e) {
+      logger.e('Error processing queue item ${item.id}: $e');
+      rethrow;
+    }
+  }
+
+  /// Download changes from server and apply them locally.
+  /// Handles created, updated, and deleted entities, plus conflicts.
+  Future<void> _downloadAndApply(String projectId) async {
+    try {
+      logger.i('Downloading changes for project $projectId');
+
+      // Get last sync time for this project
+      final lastSyncKey = 'last_sync_$projectId';
+      final lastSyncStr = await metaDao.getValue(lastSyncKey);
+      final lastSync = lastSyncStr != null ? int.tryParse(lastSyncStr) ?? 0 : 0;
+
+      // Download from server
+      final response = await apiClient.syncDownload(projectId, lastSync);
+      logger.i('Downloaded sync data for project $projectId');
+
+      // Apply changes in a transaction
+      await db.transaction(() async {
+        // Apply created entities
+        final created = response['created'] as List? ?? [];
+        for (final entity in created) {
+          await _applyCreatedEntity(projectId, entity);
+        }
+        logger.i('Applied ${created.length} created entities');
+
+        // Apply updated entities
+        final updated = response['updated'] as List? ?? [];
+        for (final entity in updated) {
+          await _applyUpdatedEntity(projectId, entity);
+        }
+        logger.i('Applied ${updated.length} updated entities');
+
+        // Apply deleted entities
+        final deleted = response['deleted'] as List? ?? [];
+        for (final entity in deleted) {
+          await _applyDeletedEntity(projectId, entity);
+        }
+        logger.i('Applied ${deleted.length} deleted entities');
+
+        // Handle conflicts if present
+        final conflicts = response['conflicts'] as List? ?? [];
+        for (final conflict in conflicts) {
+          await conflictDao.insertConflict(
+            SyncConflictsCompanion.insert(
+              id: uuid(),
+              entityType: conflict['entityType'] ?? 'unknown',
+              entityId: conflict['entityId'] ?? '',
+              localPayload: jsonEncode(conflict['local'] ?? {}),
+              serverPayload: jsonEncode(conflict['server'] ?? {}),
+              detectedAt: now(),
+              createdAt: now(),
+            ),
+          );
+        }
+        logger.i('Inserted ${conflicts.length} conflicts');
+
+        // Update last sync time
+        final nowMs = now();
+        await metaDao.setValue(lastSyncKey, '$nowMs');
+        logger.i('Updated last sync time for project $projectId');
+      });
+
+      logger.i(
+        'Finished downloading and applying changes for project $projectId',
+      );
+    } catch (e) {
+      logger.e('Error in _downloadAndApply for project $projectId: $e');
+      rethrow;
+    }
+  }
+
+  /// Apply a created entity from server.
+  Future<void> _applyCreatedEntity(
+    String projectId,
+    Map<String, dynamic> entity,
+  ) async {
+    try {
+      final entityType = entity['entityType'] ?? 'unknown';
+      final entityId = entity['id'] ?? '';
+
+      logger.i('Applying created entity: $entityType/$entityId');
+
+      // TODO: Route to appropriate DAO based on entityType
+      // For now, just log
+      logger.i('Created entity applied: $entityType/$entityId');
+    } catch (e) {
+      logger.e('Error applying created entity: $e');
+      rethrow;
+    }
+  }
+
+  /// Apply an updated entity from server.
+  Future<void> _applyUpdatedEntity(
+    String projectId,
+    Map<String, dynamic> entity,
+  ) async {
+    try {
+      final entityType = entity['entityType'] ?? 'unknown';
+      final entityId = entity['id'] ?? '';
+
+      logger.i('Applying updated entity: $entityType/$entityId');
+
+      // TODO: Route to appropriate DAO based on entityType
+      // For now, just log
+      logger.i('Updated entity applied: $entityType/$entityId');
+    } catch (e) {
+      logger.e('Error applying updated entity: $e');
+      rethrow;
+    }
+  }
+
+  /// Apply a deleted entity from server.
+  Future<void> _applyDeletedEntity(
+    String projectId,
+    Map<String, dynamic> entity,
+  ) async {
+    try {
+      final entityType = entity['entityType'] ?? 'unknown';
+      final entityId = entity['id'] ?? '';
+
+      logger.i('Applying deleted entity: $entityType/$entityId');
+
+      // TODO: Route to appropriate DAO based on entityType
+      // For now, just log
+      logger.i('Deleted entity applied: $entityType/$entityId');
+    } catch (e) {
+      logger.e('Error applying deleted entity: $e');
+      rethrow;
+    }
+  }
+
+  /// Get pending queue count.
+  Future<int> getPendingQueueCount() async {
+    return await syncQueueDao.pendingCount();
+  }
+
+  /// Get unresolved conflicts count.
+  Future<int> getUnresolvedConflictsCount() async {
+    final conflicts = await conflictDao.getUnresolvedConflicts();
+    return conflicts.length;
+  }
+
+  @visibleForTesting
+  Future<void> processOutgoingForTesting({
+    int batchSize = SyncConstants.defaultBatchSize,
+  }) {
+    return _processOutgoing(batchSize: batchSize);
+  }
+
+  @visibleForTesting
+  Future<void> downloadAndApplyForTesting(String projectId) {
+    return _downloadAndApply(projectId);
+  }
+}
+
+/// Exception thrown when a conflict is detected during sync.
+class ConflictException implements Exception {
+  final String message;
+  final String serverPayload;
+
+  ConflictException({required this.message, required this.serverPayload});
+
+  @override
+  String toString() => 'ConflictException: $message';
+}

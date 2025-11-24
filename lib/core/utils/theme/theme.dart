@@ -11,12 +11,14 @@ import 'package:flutter/material.dart';
 class TAppTheme {
   TAppTheme._();
 
+  // Minimal light theme: white background, black text, no gradients
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
-    fontFamily: 'Poppins',
+    fontFamily: 'Roboto',
     brightness: Brightness.light,
-    primaryColor: Colors.blue,
+    primaryColor: Colors.black,
     scaffoldBackgroundColor: Colors.white,
+    dividerColor: const Color(0xFFE0E0E0),
     textTheme: TTextTheme.lightTextThem,
     elevatedButtonTheme: TElevatedButtonTheme.lightElevatedButtonStyle,
     appBarTheme: TAppBarTheme.lightAppBarTheme,
@@ -25,14 +27,22 @@ class TAppTheme {
     chipTheme: TChipTheme.lightChipTheme,
     outlinedButtonTheme: TOutlinedButtonTheme.lightOutlinedButtonTheme,
     inputDecorationTheme: TTextFormFieldTheme.lightTextFieldTheme,
+    colorScheme: const ColorScheme.light(
+      primary: Colors.black,
+      secondary: Colors.black87,
+      surface: Colors.white,
+      error: Colors.red,
+    ),
   );
 
+  // Minimal dark theme: black background, white text, no gradients
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
-    fontFamily: 'Poppins',
+    fontFamily: 'Roboto',
     brightness: Brightness.dark,
-    primaryColor: Colors.blue,
+    primaryColor: Colors.white,
     scaffoldBackgroundColor: Colors.black,
+    dividerColor: const Color(0xFF303030),
     textTheme: TTextTheme.darkTextTheme,
     elevatedButtonTheme: TElevatedButtonTheme.darkElevatedButtonStyle,
     appBarTheme: TAppBarTheme.darkAppBarTheme,
@@ -41,5 +51,11 @@ class TAppTheme {
     chipTheme: TChipTheme.darkChipTheme,
     outlinedButtonTheme: TOutlinedButtonTheme.darkOutlinedButtonTheme,
     inputDecorationTheme: TTextFormFieldTheme.darkTextFieldTheme,
+    colorScheme: const ColorScheme.dark(
+      primary: Colors.white,
+      secondary: Colors.white70,
+      surface: Colors.black,
+      error: Colors.red,
+    ),
   );
 }
