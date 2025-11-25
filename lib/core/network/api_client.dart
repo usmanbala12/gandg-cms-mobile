@@ -356,4 +356,86 @@ class ApiClient {
       rethrow;
     }
   }
+
+  /// Fetch form templates.
+  /// TODO: Adjust response shape based on actual backend contract.
+  Future<List<Map<String, dynamic>>> fetchTemplates() async {
+    try {
+      final response = await dio.get('/api/v1/form-templates');
+      logger.i('Fetched form templates: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map && data['data'] is List) {
+          return List<Map<String, dynamic>>.from(data['data']);
+        } else if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        }
+      }
+      return [];
+    } catch (e) {
+      logger.e('Error fetching form templates: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch reports for a project.
+  /// TODO: Adjust response shape based on actual backend contract.
+  Future<List<Map<String, dynamic>>> fetchProjectReports(
+    String projectId, {
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    try {
+      final response = await dio.get(
+        '/api/v1/projects/$projectId/reports',
+        queryParameters: {'limit': limit, 'offset': offset},
+      );
+      logger.i(
+        'Fetched reports for project $projectId: ${response.statusCode}',
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map &&
+            data['data'] is Map &&
+            data['data']['content'] is List) {
+          return List<Map<String, dynamic>>.from(data['data']['content']);
+        }
+        if (data is Map && data['data'] is List) {
+          return List<Map<String, dynamic>>.from(data['data']);
+        } else if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        }
+      }
+      return [];
+    } catch (e) {
+      logger.e('Error fetching reports for project $projectId: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch a single report.
+  /// TODO: Adjust response shape based on actual backend contract.
+  Future<Map<String, dynamic>> fetchReport(
+    String projectId,
+    String reportId,
+  ) async {
+    try {
+      final response = await dio.get(
+        '/api/v1/projects/$projectId/reports/$reportId',
+      );
+      logger.i(
+        'Fetched report $reportId for project $projectId: ${response.statusCode}',
+      );
+
+      if (response.statusCode == 200) {
+        return response.data is Map ? response.data : {};
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error fetching report $reportId for project $projectId: $e');
+      rethrow;
+    }
+  }
 }

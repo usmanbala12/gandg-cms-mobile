@@ -5,6 +5,8 @@ import 'package:field_link/features/dashboard/presentation/pages/dashboard_page.
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import 'package:field_link/features/reports/presentation/pages/reports_list_page.dart';
+
 class NavigationMenu extends StatelessWidget {
   const NavigationMenu({super.key, this.initialIndex = 0});
 
@@ -110,7 +112,7 @@ class NavigationController extends GetxController {
 
   final screens = [
     const DashboardPage(),
-    const Placeholder(),
+    const ReportsListPage(),
     const Placeholder(),
     const Placeholder(),
     const Placeholder(),

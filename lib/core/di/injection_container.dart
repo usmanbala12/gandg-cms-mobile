@@ -29,6 +29,9 @@ import '../../features/authentication/domain/usecases/get_current_user_usecase.d
 import '../../features/authentication/presentation/bloc/auth/auth_bloc.dart';
 import '../../features/dashboard/data/repositories/dashboard_repository_impl.dart';
 import '../../features/dashboard/presentation/bloc/dashboard_cubit.dart';
+import '../../features/reports/data/repositories/report_repository_impl.dart';
+import '../../features/reports/data/repositories/media_repository_impl.dart';
+import '../../features/reports/data/datasources/report_remote_datasource.dart';
 
 final sl = GetIt.instance;
 
@@ -69,16 +72,17 @@ Future<void> initDependencies({required String baseUrl}) async {
 
   // Core repositories & services
   sl.registerLazySingleton<ReportRepository>(
-    () => ReportRepository(
+    () => ReportRepositoryImpl(
       db: sl(),
       reportDao: sl(),
       syncQueueDao: sl(),
-      apiClient: sl(),
+      remoteDataSource: ReportRemoteDataSource(sl()),
+      mediaDao: sl(),
     ),
   );
 
   sl.registerLazySingleton<MediaRepository>(
-    () => MediaRepository(
+    () => MediaRepositoryImpl(
       db: sl(),
       mediaDao: sl(),
       syncQueueDao: sl(),

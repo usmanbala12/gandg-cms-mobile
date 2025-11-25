@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../app_database.dart';
@@ -30,19 +31,27 @@ class ReportDao extends DatabaseAccessor<AppDatabase> with _$ReportDaoMixin {
     );
   }
 
-  Future<List<Report>> getReportsForProject(
-    String projectId, {
+  Future<void> updateReportMedia(String id, List<String> mediaIds) async {
+    await (update(reports)..where((t) => t.id.equals(id))).write(
+      ReportsCompanion(mediaIds: Value(jsonEncode(mediaIds))),
+    );
+  }
+
+  Future<List<Report>> getReports({
+    String? projectId,
     int limit = 50,
     int offset = 0,
   }) async {
-    return (select(reports)
-          ..where((t) => t.projectId.equals(projectId))
-          ..orderBy([
-            (t) =>
-                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
-          ])
-          ..limit(limit, offset: offset))
-        .get();
+    final query = select(reports);
+    if (projectId != null) {
+      query.where((t) => t.projectId.equals(projectId));
+    }
+    query
+      ..orderBy([
+        (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+      ])
+      ..limit(limit, offset: offset);
+    return query.get();
   }
 
   Future<List<Report>> getPendingReports(String projectId) async {
@@ -52,14 +61,15 @@ class ReportDao extends DatabaseAccessor<AppDatabase> with _$ReportDaoMixin {
         .get();
   }
 
-  Stream<List<Report>> watchReportsForProject(String projectId) {
-    return (select(reports)
-          ..where((t) => t.projectId.equals(projectId))
-          ..orderBy([
-            (t) =>
-                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
-          ]))
-        .watch();
+  Stream<List<Report>> watchReports({String? projectId}) {
+    final query = select(reports);
+    if (projectId != null) {
+      query.where((t) => t.projectId.equals(projectId));
+    }
+    query.orderBy([
+      (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+    ]);
+    return query.watch();
   }
 
   Future<int> deleteReport(String id) async {
