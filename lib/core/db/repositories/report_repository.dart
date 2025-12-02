@@ -1,8 +1,9 @@
+import '../../../core/domain/repository_result.dart';
 import '../../../features/reports/domain/entities/report_entity.dart';
 
 abstract class ReportRepository {
   Stream<List<ReportEntity>> watchReports({String? projectId});
-  Future<List<ReportEntity>> getReports({
+  Future<RepositoryResult<List<ReportEntity>>> getReports({
     String? projectId,
     bool forceRemote = false,
   });
@@ -18,5 +19,12 @@ abstract class ReportRepository {
     String? payload,
   );
   Future<void> cleanupOldReports(String projectId);
-  Future<List<Map<String, dynamic>>> getTemplates();
+  Future<List<Map<String, dynamic>>> getTemplates({bool forceRefresh = false});
+
+  /// Creates a report with the given data and returns the report ID
+  Future<String> createReportWithData({
+    required String projectId,
+    required String templateId,
+    required Map<String, dynamic> submissionData,
+  });
 }

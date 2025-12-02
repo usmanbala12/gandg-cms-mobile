@@ -357,12 +357,79 @@ class ApiClient {
     }
   }
 
-  /// Fetch form templates.
-  /// TODO: Adjust response shape based on actual backend contract.
-  Future<List<Map<String, dynamic>>> fetchTemplates() async {
+  /// Patch issue status on the server.
+  /// TODO: Adjust payload and response shape based on actual backend contract.
+  Future<Map<String, dynamic>> patchIssueStatus(
+    String issueId,
+    Map<String, dynamic> payload,
+  ) async {
     try {
-      final response = await dio.get('/api/v1/form-templates');
-      logger.i('Fetched form templates: ${response.statusCode}');
+      final response = await dio.patch(
+        '/api/v1/issues/$issueId/status',
+        data: payload,
+      );
+      logger.i('Patched issue status for $issueId: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return response.data is Map ? response.data : {};
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error patching issue status for $issueId: $e');
+      rethrow;
+    }
+  }
+
+  /// Create a comment on an issue.
+  /// TODO: Adjust payload and response shape based on actual backend contract.
+  Future<Map<String, dynamic>> createIssueComment(
+    String issueId,
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final response = await dio.post(
+        '/api/v1/issues/$issueId/comments',
+        data: payload,
+      );
+      logger.i('Created comment on issue $issueId: ${response.statusCode}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return response.data is Map ? response.data : {};
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error creating comment on issue $issueId: $e');
+      rethrow;
+    }
+  }
+
+  /// Assign an issue to a user.
+  Future<Map<String, dynamic>> assignIssue(
+    String issueId,
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final response = await dio.patch(
+        '/api/v1/issues/$issueId/assign',
+        data: payload,
+      );
+      logger.i('Assigned issue $issueId: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return response.data is Map ? response.data : {};
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error assigning issue $issueId: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch history for an issue.
+  Future<List<Map<String, dynamic>>> fetchIssueHistory(String issueId) async {
+    try {
+      final response = await dio.get('/api/v1/issues/$issueId/history');
+      logger.i('Fetched history for issue $issueId: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = response.data;
@@ -371,6 +438,108 @@ class ApiClient {
         } else if (data is List) {
           return List<Map<String, dynamic>>.from(data);
         }
+      }
+      return [];
+    } catch (e) {
+      logger.e('Error fetching history for issue $issueId: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch issues for a project.
+  /// TODO: Adjust response shape based on actual backend contract.
+  Future<List<Map<String, dynamic>>> fetchProjectIssues(
+    String projectId, {
+    int limit = 50,
+    int offset = 0,
+    Map<String, dynamic>? filters,
+  }) async {
+    try {
+      final queryParams = {
+        'limit': limit,
+        'offset': offset,
+        if (filters != null) ...filters,
+      };
+
+      final response = await dio.get(
+        '/api/v1/projects/$projectId/issues',
+        queryParameters: queryParams,
+      );
+      logger.i('Fetched issues for project $projectId: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        // Handle paginated response: data -> data -> content
+        if (data is Map &&
+            data['data'] is Map &&
+            data['data']['content'] is List) {
+          return List<Map<String, dynamic>>.from(data['data']['content']);
+        }
+        // Handle direct list response: data -> data
+        if (data is Map && data['data'] is List) {
+          return List<Map<String, dynamic>>.from(data['data']);
+        } else if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        }
+      }
+      return [];
+    } catch (e) {
+      logger.e('Error fetching issues for project $projectId: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch form templates.
+  /// TODO: Adjust response shape based on actual backend contract.
+  Future<List<Map<String, dynamic>>> fetchTemplates() async {
+    try {
+      final response = await dio.get('/api/v1/form-templates');
+      logger.d('📥 [ApiClient] Raw Templates Response: ${response.data}');
+      logger.i('💡 Fetched form templates: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+
+        // Log the data structure for debugging
+        logger.d('📊 Response data type: ${data.runtimeType}');
+        if (data is Map) {
+          logger.d('📊 Map keys: ${data.keys.toList()}');
+          if (data['data'] != null) {
+            logger.d('📊 data[\'data\'] type: ${data['data'].runtimeType}');
+            if (data['data'] is List) {
+              logger.d(
+                '📊 data[\'data\'] length: ${(data['data'] as List).length}',
+              );
+            }
+          }
+        }
+
+        // Handle paginated response: data -> data -> content
+        if (data is Map &&
+            data['data'] is Map &&
+            data['data']['content'] is List) {
+          final templates = List<Map<String, dynamic>>.from(
+            data['data']['content'],
+          );
+          logger.i(
+            '✅ Returning ${templates.length} templates from data.data.content',
+          );
+          return templates;
+        }
+        // Handle direct list response: data -> data
+        if (data is Map && data['data'] is List) {
+          final templates = List<Map<String, dynamic>>.from(data['data']);
+          logger.i('✅ Returning ${templates.length} templates from data.data');
+          return templates;
+        } else if (data is List) {
+          final templates = List<Map<String, dynamic>>.from(data);
+          logger.i(
+            '✅ Returning ${templates.length} templates from direct list',
+          );
+          return templates;
+        }
+
+        logger.w('⚠️ Response structure did not match any expected pattern');
       }
       return [];
     } catch (e) {

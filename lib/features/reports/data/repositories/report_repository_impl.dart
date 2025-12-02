@@ -1,33 +1,43 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
 import 'package:logger/logger.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/db/app_database.dart';
 import '../../../../core/db/daos/media_dao.dart';
+import '../../../../core/db/daos/meta_dao.dart';
 import '../../../../core/db/daos/report_dao.dart';
 import '../../../../core/db/daos/sync_queue_dao.dart';
 import '../../../../core/db/repositories/report_repository.dart';
+import '../../../../core/domain/repository_result.dart';
+import '../../../../core/network/network_info.dart';
 import '../../domain/entities/report_entity.dart';
 import '../datasources/report_remote_datasource.dart';
 import '../models/report_model.dart';
+
+part '_create_report_method.dart';
 
 class ReportRepositoryImpl implements ReportRepository {
   final AppDatabase db;
   final ReportDao reportDao;
   final MediaDao mediaDao;
+  final MetaDao metaDao;
   final SyncQueueDao syncQueueDao;
   final ReportRemoteDataSource remoteDataSource;
+  final NetworkInfo networkInfo;
   final Logger logger;
 
   ReportRepositoryImpl({
     required this.db,
     required this.reportDao,
     required this.mediaDao,
+    required this.metaDao,
     required this.syncQueueDao,
     required this.remoteDataSource,
+    required this.networkInfo,
     Logger? logger,
   }) : logger = logger ?? Logger();
 
@@ -39,28 +49,103 @@ class ReportRepositoryImpl implements ReportRepository {
   }
 
   @override
-  Future<List<ReportEntity>> getReports({
+  Future<RepositoryResult<List<ReportEntity>>> getReports({
     String? projectId,
     bool forceRemote = false,
   }) async {
-    if (forceRemote && projectId != null) {
-      try {
-        final remoteData = await remoteDataSource.fetchProjectReports(
-          projectId,
-        );
-        await db.transaction(() async {
-          for (final data in remoteData) {
-            final model = ReportModel.fromJson(data);
-            await reportDao.insertReport(model.toCompanion());
-          }
-        });
-      } catch (e) {
-        logger.e('Error fetching remote reports: $e');
-        // Fallback to local
-      }
-    }
+    // Get cached reports
     final rows = await reportDao.getReports(projectId: projectId);
-    return rows.map((row) => ReportModel.fromDb(row)).toList();
+    final cached = rows.map((row) => ReportModel.fromDb(row)).toList();
+
+    // Get last sync timestamp
+    final lastSyncKey = projectId != null
+        ? 'reports_last_synced_$projectId'
+        : 'reports_last_synced';
+    final lastSyncStr = await metaDao.getValue(lastSyncKey);
+    final lastSyncedAt = lastSyncStr != null ? int.tryParse(lastSyncStr) : null;
+
+    // Check connectivity
+    final isOnline = await networkInfo.isOnline();
+    logger.d(
+      'getReports: online=$isOnline, forceRemote=$forceRemote, projectId=$projectId',
+    );
+
+    // If offline, return cached data
+    if (!isOnline) {
+      logger.i('Device offline, returning ${cached.length} cached reports');
+      return RepositoryResult.local(
+        cached,
+        message: 'Offline mode. Showing cached data.',
+        lastSyncedAt: lastSyncedAt,
+      );
+    }
+
+    // If projectId is null, can't fetch remote
+    if (projectId == null) {
+      logger.w('No projectId provided, returning cached reports');
+      return RepositoryResult.local(
+        cached,
+        message: 'No project selected.',
+        lastSyncedAt: lastSyncedAt,
+      );
+    }
+
+    // Online - fetch from remote
+    logger.i('Fetching reports from remote API for project $projectId');
+    try {
+      final remoteData = await remoteDataSource.fetchProjectReports(projectId);
+      logger.i('Successfully fetched ${remoteData.length} reports from remote');
+
+      final nowMs = DateTime.now().millisecondsSinceEpoch;
+      await db.transaction(() async {
+        for (final data in remoteData) {
+          final model = ReportModel.fromJson(data);
+          await reportDao.insertReport(model.toCompanion());
+        }
+
+        // Update last synced timestamp
+        await metaDao.setValue(lastSyncKey, nowMs.toString());
+      });
+
+      // Return fresh remote data
+      final updatedRows = await reportDao.getReports(projectId: projectId);
+      final reports = updatedRows
+          .map((row) => ReportModel.fromDb(row))
+          .toList();
+      logger.i('✅ Returned ${reports.length} reports from remote');
+      return RepositoryResult.remote(reports, lastSyncedAt: nowMs);
+    } on DioException catch (e) {
+      logger.e('Dio error fetching remote reports: $e');
+
+      // Handle auth errors
+      if (e.response?.statusCode == 401 || e.response?.statusCode == 403) {
+        logger.e('Authentication error fetching reports');
+        // For now, fallback to local (could throw auth exception instead)
+      }
+
+      // Network error - fallback to local
+      logger.w('Network error fetching reports, falling back to cached data');
+      return RepositoryResult.local(
+        cached,
+        message: 'Network error. Showing cached data.',
+        lastSyncedAt: lastSyncedAt,
+      );
+    } on SocketException catch (e) {
+      logger.e('Socket error fetching remote reports: $e');
+      return RepositoryResult.local(
+        cached,
+        message: 'Connection error. Showing cached data.',
+        lastSyncedAt: lastSyncedAt,
+      );
+    } catch (e) {
+      logger.e('Error fetching remote reports: $e');
+      // Fallback to local
+      return RepositoryResult.local(
+        cached,
+        message: 'Error loading data. Showing cached data.',
+        lastSyncedAt: lastSyncedAt,
+      );
+    }
   }
 
   @override
@@ -257,12 +342,80 @@ class ReportRepositoryImpl implements ReportRepository {
   }
 
   @override
-  Future<List<Map<String, dynamic>>> getTemplates() async {
+  Future<List<Map<String, dynamic>>> getTemplates({
+    bool forceRefresh = false,
+  }) async {
     try {
       return await remoteDataSource.fetchTemplates();
     } catch (e) {
       logger.e('Error fetching templates: $e');
       return [];
     }
+  }
+
+  @override
+  Future<String> createReportWithData({
+    required String projectId,
+    required String templateId,
+    required Map<String, dynamic> submissionData,
+  }) async {
+    final reportId = const Uuid().v4();
+    final now = DateTime.now().millisecondsSinceEpoch;
+
+    print('📝 Creating report: $reportId');
+    print('   Project: $projectId');
+    print('   Template: $templateId');
+
+    // Create report entity
+    final report = ReportEntity(
+      id: reportId,
+      projectId: projectId,
+      formTemplateId: templateId,
+      reportDate: now,
+      submissionData: submissionData,
+      status: 'PENDING',
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    // Atomic transaction: insert report + enqueue sync
+    await db.transaction(() async {
+      // Insert report
+      await reportDao.insertReport(
+        ReportsCompanion.insert(
+          id: report.id,
+          projectId: report.projectId,
+          reportDate: report.reportDate,
+          status: Value(report.status),
+          createdAt: report.createdAt,
+          updatedAt: report.updatedAt,
+          formTemplateId: Value(report.formTemplateId),
+          submissionData: Value(jsonEncode(report.submissionData)),
+          mediaIds: const Value('[]'),
+        ),
+      );
+
+      // Enqueue sync item
+      await syncQueueDao.enqueue(
+        SyncQueueCompanion.insert(
+          id: const Uuid().v4(),
+          projectId: projectId,
+          entityType: 'report',
+          entityId: reportId,
+          action: 'create',
+          createdAt: now,
+          payload: Value(
+            jsonEncode({
+              'form_template_id': templateId,
+              'submission_data': submissionData,
+              'report_date': now,
+            }),
+          ),
+        ),
+      );
+    });
+
+    logger.i('✅ Report created and enqueued: $reportId');
+    return reportId;
   }
 }

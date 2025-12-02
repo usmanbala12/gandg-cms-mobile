@@ -129,13 +129,11 @@ class _ReportsListPageState extends State<ReportsListPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  ReportCreatePage(projectId: widget.projectId),
-            ),
+            MaterialPageRoute(builder: (context) => const ReportCreatePage()),
           );
         },
         child: const Icon(Icons.add),

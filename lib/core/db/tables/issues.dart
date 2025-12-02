@@ -11,6 +11,7 @@ class Issues extends Table {
   TextColumn get category => text().nullable()();
   TextColumn get location => text().nullable()(); // JSON as TEXT
   IntColumn get dueDate => integer().nullable()(); // epoch ms
+  TextColumn get meta => text().nullable()(); // Additional JSON metadata
 
   IntColumn get createdAt => integer()();
   IntColumn get updatedAt => integer()();
@@ -18,6 +19,11 @@ class Issues extends Table {
   // Server-side fields
   TextColumn get serverId => text().nullable()();
   IntColumn get serverUpdatedAt => integer().nullable()(); // epoch ms
+  IntColumn get deletedAt => integer().nullable()();
+
+  // Sync status
+  TextColumn get syncStatus =>
+      text().withDefault(const Constant('SYNCED'))(); // PENDING/SYNCED/ERROR
 
   @override
   Set<Column> get primaryKey => {id};

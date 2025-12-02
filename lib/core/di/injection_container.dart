@@ -4,6 +4,7 @@ import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../network/dio_client.dart';
 import '../network/api_client.dart';
+import '../network/network_info.dart';
 import '../services/token_storage_service.dart';
 import '../utils/biometrics/biometric_auth_service.dart';
 import '../db/app_database.dart';
@@ -12,6 +13,9 @@ import '../db/daos/sync_queue_dao.dart';
 import '../db/daos/analytics_dao.dart';
 import '../db/daos/report_dao.dart';
 import '../db/daos/issue_dao.dart';
+import '../db/daos/issue_comment_dao.dart';
+import '../db/daos/issue_history_dao.dart';
+import '../db/daos/issue_media_dao.dart';
 import '../db/daos/media_dao.dart';
 import '../db/daos/conflict_dao.dart';
 import '../db/daos/meta_dao.dart';
@@ -32,6 +36,11 @@ import '../../features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import '../../features/reports/data/repositories/report_repository_impl.dart';
 import '../../features/reports/data/repositories/media_repository_impl.dart';
 import '../../features/reports/data/datasources/report_remote_datasource.dart';
+import '../../features/issues/data/datasources/issue_remote_datasource.dart';
+import '../../features/issues/data/repositories/issue_repository_impl.dart';
+import '../../features/issues/domain/repositories/issue_repository.dart';
+
+import '../../features/issues/presentation/bloc/issues_bloc.dart';
 
 final sl = GetIt.instance;
 
@@ -63,9 +72,21 @@ Future<void> initDependencies({required String baseUrl}) async {
   sl.registerLazySingleton<AnalyticsDao>(() => AnalyticsDao(sl<AppDatabase>()));
   sl.registerLazySingleton<ReportDao>(() => ReportDao(sl<AppDatabase>()));
   sl.registerLazySingleton<IssueDao>(() => IssueDao(sl<AppDatabase>()));
+  sl.registerLazySingleton<IssueCommentDao>(
+    () => IssueCommentDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<IssueHistoryDao>(
+    () => IssueHistoryDao(sl<AppDatabase>()),
+  );
+  sl.registerLazySingleton<IssueMediaDao>(
+    () => IssueMediaDao(sl<AppDatabase>()),
+  );
   sl.registerLazySingleton<MediaDao>(() => MediaDao(sl<AppDatabase>()));
   sl.registerLazySingleton<ConflictDao>(() => ConflictDao(sl<AppDatabase>()));
   sl.registerLazySingleton<MetaDao>(() => MetaDao(sl<AppDatabase>()));
+
+  // Network
+  sl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl());
 
   // API Client
   sl.registerLazySingleton<ApiClient>(() => ApiClient(dio: sl<Dio>()));
@@ -78,6 +99,8 @@ Future<void> initDependencies({required String baseUrl}) async {
       syncQueueDao: sl(),
       remoteDataSource: ReportRemoteDataSource(sl()),
       mediaDao: sl(),
+      metaDao: sl(),
+      networkInfo: sl(),
     ),
   );
 
@@ -90,6 +113,24 @@ Future<void> initDependencies({required String baseUrl}) async {
     ),
   );
 
+  sl.registerLazySingleton<IssueRemoteDataSource>(
+    () => IssueRemoteDataSource(apiClient: sl()),
+  );
+
+  sl.registerLazySingleton<IssueRepository>(
+    () => IssueRepositoryImpl(
+      db: sl(),
+      issueDao: sl(),
+      issueCommentDao: sl(),
+      issueHistoryDao: sl(),
+      issueMediaDao: sl(),
+      syncQueueDao: sl(),
+      metaDao: sl(),
+      remoteDataSource: sl(),
+      networkInfo: sl(),
+    ),
+  );
+
   sl.registerLazySingleton<SyncManager>(
     () => SyncManager(
       db: sl(),
@@ -99,6 +140,9 @@ Future<void> initDependencies({required String baseUrl}) async {
       apiClient: sl(),
       reportRepository: sl(),
       mediaRepository: sl(),
+      issueRepository: sl(),
+      issueDao: sl(),
+      issueCommentDao: sl(),
     ),
   );
 
@@ -110,6 +154,7 @@ Future<void> initDependencies({required String baseUrl}) async {
       apiClient: sl(),
       syncManager: sl(),
       tokenStorageService: sl(),
+      networkInfo: sl(),
     ),
   );
 
@@ -144,6 +189,8 @@ Future<void> initDependencies({required String baseUrl}) async {
   );
 
   sl.registerFactory(() => DashboardCubit(repository: sl()));
+
+  sl.registerFactory(() => IssuesBloc(repository: sl()));
 }
 
 /// Backward-compatible init function that uses default base URL.

@@ -2666,6 +2666,15 @@ class $IssuesTable extends Issues with TableInfo<$IssuesTable, Issue> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _metaMeta = const VerificationMeta('meta');
+  @override
+  late final GeneratedColumn<String> meta = GeneratedColumn<String>(
+    'meta',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2710,6 +2719,29 @@ class $IssuesTable extends Issues with TableInfo<$IssuesTable, Issue> {
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncStatusMeta = const VerificationMeta(
+    'syncStatus',
+  );
+  @override
+  late final GeneratedColumn<String> syncStatus = GeneratedColumn<String>(
+    'sync_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('SYNCED'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2722,10 +2754,13 @@ class $IssuesTable extends Issues with TableInfo<$IssuesTable, Issue> {
     category,
     location,
     dueDate,
+    meta,
     createdAt,
     updatedAt,
     serverId,
     serverUpdatedAt,
+    deletedAt,
+    syncStatus,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2805,6 +2840,12 @@ class $IssuesTable extends Issues with TableInfo<$IssuesTable, Issue> {
         dueDate.isAcceptableOrUnknown(data['due_date']!, _dueDateMeta),
       );
     }
+    if (data.containsKey('meta')) {
+      context.handle(
+        _metaMeta,
+        meta.isAcceptableOrUnknown(data['meta']!, _metaMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -2834,6 +2875,18 @@ class $IssuesTable extends Issues with TableInfo<$IssuesTable, Issue> {
           data['server_updated_at']!,
           _serverUpdatedAtMeta,
         ),
+      );
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('sync_status')) {
+      context.handle(
+        _syncStatusMeta,
+        syncStatus.isAcceptableOrUnknown(data['sync_status']!, _syncStatusMeta),
       );
     }
     return context;
@@ -2885,6 +2938,10 @@ class $IssuesTable extends Issues with TableInfo<$IssuesTable, Issue> {
         DriftSqlType.int,
         data['${effectivePrefix}due_date'],
       ),
+      meta: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}meta'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}created_at'],
@@ -2901,6 +2958,14 @@ class $IssuesTable extends Issues with TableInfo<$IssuesTable, Issue> {
         DriftSqlType.int,
         data['${effectivePrefix}server_updated_at'],
       ),
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      syncStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sync_status'],
+      )!,
     );
   }
 
@@ -2921,10 +2986,13 @@ class Issue extends DataClass implements Insertable<Issue> {
   final String? category;
   final String? location;
   final int? dueDate;
+  final String? meta;
   final int createdAt;
   final int updatedAt;
   final String? serverId;
   final int? serverUpdatedAt;
+  final int? deletedAt;
+  final String syncStatus;
   const Issue({
     required this.id,
     required this.projectId,
@@ -2936,10 +3004,13 @@ class Issue extends DataClass implements Insertable<Issue> {
     this.category,
     this.location,
     this.dueDate,
+    this.meta,
     required this.createdAt,
     required this.updatedAt,
     this.serverId,
     this.serverUpdatedAt,
+    this.deletedAt,
+    required this.syncStatus,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2968,6 +3039,9 @@ class Issue extends DataClass implements Insertable<Issue> {
     if (!nullToAbsent || dueDate != null) {
       map['due_date'] = Variable<int>(dueDate);
     }
+    if (!nullToAbsent || meta != null) {
+      map['meta'] = Variable<String>(meta);
+    }
     map['created_at'] = Variable<int>(createdAt);
     map['updated_at'] = Variable<int>(updatedAt);
     if (!nullToAbsent || serverId != null) {
@@ -2976,6 +3050,10 @@ class Issue extends DataClass implements Insertable<Issue> {
     if (!nullToAbsent || serverUpdatedAt != null) {
       map['server_updated_at'] = Variable<int>(serverUpdatedAt);
     }
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
+    }
+    map['sync_status'] = Variable<String>(syncStatus);
     return map;
   }
 
@@ -3005,6 +3083,7 @@ class Issue extends DataClass implements Insertable<Issue> {
       dueDate: dueDate == null && nullToAbsent
           ? const Value.absent()
           : Value(dueDate),
+      meta: meta == null && nullToAbsent ? const Value.absent() : Value(meta),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
       serverId: serverId == null && nullToAbsent
@@ -3013,6 +3092,10 @@ class Issue extends DataClass implements Insertable<Issue> {
       serverUpdatedAt: serverUpdatedAt == null && nullToAbsent
           ? const Value.absent()
           : Value(serverUpdatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      syncStatus: Value(syncStatus),
     );
   }
 
@@ -3032,10 +3115,13 @@ class Issue extends DataClass implements Insertable<Issue> {
       category: serializer.fromJson<String?>(json['category']),
       location: serializer.fromJson<String?>(json['location']),
       dueDate: serializer.fromJson<int?>(json['dueDate']),
+      meta: serializer.fromJson<String?>(json['meta']),
       createdAt: serializer.fromJson<int>(json['createdAt']),
       updatedAt: serializer.fromJson<int>(json['updatedAt']),
       serverId: serializer.fromJson<String?>(json['serverId']),
       serverUpdatedAt: serializer.fromJson<int?>(json['serverUpdatedAt']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
+      syncStatus: serializer.fromJson<String>(json['syncStatus']),
     );
   }
   @override
@@ -3052,10 +3138,13 @@ class Issue extends DataClass implements Insertable<Issue> {
       'category': serializer.toJson<String?>(category),
       'location': serializer.toJson<String?>(location),
       'dueDate': serializer.toJson<int?>(dueDate),
+      'meta': serializer.toJson<String?>(meta),
       'createdAt': serializer.toJson<int>(createdAt),
       'updatedAt': serializer.toJson<int>(updatedAt),
       'serverId': serializer.toJson<String?>(serverId),
       'serverUpdatedAt': serializer.toJson<int?>(serverUpdatedAt),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
+      'syncStatus': serializer.toJson<String>(syncStatus),
     };
   }
 
@@ -3070,10 +3159,13 @@ class Issue extends DataClass implements Insertable<Issue> {
     Value<String?> category = const Value.absent(),
     Value<String?> location = const Value.absent(),
     Value<int?> dueDate = const Value.absent(),
+    Value<String?> meta = const Value.absent(),
     int? createdAt,
     int? updatedAt,
     Value<String?> serverId = const Value.absent(),
     Value<int?> serverUpdatedAt = const Value.absent(),
+    Value<int?> deletedAt = const Value.absent(),
+    String? syncStatus,
   }) => Issue(
     id: id ?? this.id,
     projectId: projectId ?? this.projectId,
@@ -3085,12 +3177,15 @@ class Issue extends DataClass implements Insertable<Issue> {
     category: category.present ? category.value : this.category,
     location: location.present ? location.value : this.location,
     dueDate: dueDate.present ? dueDate.value : this.dueDate,
+    meta: meta.present ? meta.value : this.meta,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     serverId: serverId.present ? serverId.value : this.serverId,
     serverUpdatedAt: serverUpdatedAt.present
         ? serverUpdatedAt.value
         : this.serverUpdatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    syncStatus: syncStatus ?? this.syncStatus,
   );
   Issue copyWithCompanion(IssuesCompanion data) {
     return Issue(
@@ -3108,12 +3203,17 @@ class Issue extends DataClass implements Insertable<Issue> {
       category: data.category.present ? data.category.value : this.category,
       location: data.location.present ? data.location.value : this.location,
       dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
+      meta: data.meta.present ? data.meta.value : this.meta,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       serverId: data.serverId.present ? data.serverId.value : this.serverId,
       serverUpdatedAt: data.serverUpdatedAt.present
           ? data.serverUpdatedAt.value
           : this.serverUpdatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      syncStatus: data.syncStatus.present
+          ? data.syncStatus.value
+          : this.syncStatus,
     );
   }
 
@@ -3130,10 +3230,13 @@ class Issue extends DataClass implements Insertable<Issue> {
           ..write('category: $category, ')
           ..write('location: $location, ')
           ..write('dueDate: $dueDate, ')
+          ..write('meta: $meta, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('serverId: $serverId, ')
-          ..write('serverUpdatedAt: $serverUpdatedAt')
+          ..write('serverUpdatedAt: $serverUpdatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus')
           ..write(')'))
         .toString();
   }
@@ -3150,10 +3253,13 @@ class Issue extends DataClass implements Insertable<Issue> {
     category,
     location,
     dueDate,
+    meta,
     createdAt,
     updatedAt,
     serverId,
     serverUpdatedAt,
+    deletedAt,
+    syncStatus,
   );
   @override
   bool operator ==(Object other) =>
@@ -3169,10 +3275,13 @@ class Issue extends DataClass implements Insertable<Issue> {
           other.category == this.category &&
           other.location == this.location &&
           other.dueDate == this.dueDate &&
+          other.meta == this.meta &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt &&
           other.serverId == this.serverId &&
-          other.serverUpdatedAt == this.serverUpdatedAt);
+          other.serverUpdatedAt == this.serverUpdatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.syncStatus == this.syncStatus);
 }
 
 class IssuesCompanion extends UpdateCompanion<Issue> {
@@ -3186,10 +3295,13 @@ class IssuesCompanion extends UpdateCompanion<Issue> {
   final Value<String?> category;
   final Value<String?> location;
   final Value<int?> dueDate;
+  final Value<String?> meta;
   final Value<int> createdAt;
   final Value<int> updatedAt;
   final Value<String?> serverId;
   final Value<int?> serverUpdatedAt;
+  final Value<int?> deletedAt;
+  final Value<String> syncStatus;
   final Value<int> rowid;
   const IssuesCompanion({
     this.id = const Value.absent(),
@@ -3202,10 +3314,13 @@ class IssuesCompanion extends UpdateCompanion<Issue> {
     this.category = const Value.absent(),
     this.location = const Value.absent(),
     this.dueDate = const Value.absent(),
+    this.meta = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.serverId = const Value.absent(),
     this.serverUpdatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   IssuesCompanion.insert({
@@ -3219,10 +3334,13 @@ class IssuesCompanion extends UpdateCompanion<Issue> {
     this.category = const Value.absent(),
     this.location = const Value.absent(),
     this.dueDate = const Value.absent(),
+    this.meta = const Value.absent(),
     required int createdAt,
     required int updatedAt,
     this.serverId = const Value.absent(),
     this.serverUpdatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.syncStatus = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        projectId = Value(projectId),
@@ -3240,10 +3358,13 @@ class IssuesCompanion extends UpdateCompanion<Issue> {
     Expression<String>? category,
     Expression<String>? location,
     Expression<int>? dueDate,
+    Expression<String>? meta,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
     Expression<String>? serverId,
     Expression<int>? serverUpdatedAt,
+    Expression<int>? deletedAt,
+    Expression<String>? syncStatus,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -3257,10 +3378,13 @@ class IssuesCompanion extends UpdateCompanion<Issue> {
       if (category != null) 'category': category,
       if (location != null) 'location': location,
       if (dueDate != null) 'due_date': dueDate,
+      if (meta != null) 'meta': meta,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (serverId != null) 'server_id': serverId,
       if (serverUpdatedAt != null) 'server_updated_at': serverUpdatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (syncStatus != null) 'sync_status': syncStatus,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -3276,10 +3400,13 @@ class IssuesCompanion extends UpdateCompanion<Issue> {
     Value<String?>? category,
     Value<String?>? location,
     Value<int?>? dueDate,
+    Value<String?>? meta,
     Value<int>? createdAt,
     Value<int>? updatedAt,
     Value<String?>? serverId,
     Value<int?>? serverUpdatedAt,
+    Value<int?>? deletedAt,
+    Value<String>? syncStatus,
     Value<int>? rowid,
   }) {
     return IssuesCompanion(
@@ -3293,10 +3420,13 @@ class IssuesCompanion extends UpdateCompanion<Issue> {
       category: category ?? this.category,
       location: location ?? this.location,
       dueDate: dueDate ?? this.dueDate,
+      meta: meta ?? this.meta,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       serverId: serverId ?? this.serverId,
       serverUpdatedAt: serverUpdatedAt ?? this.serverUpdatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      syncStatus: syncStatus ?? this.syncStatus,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3334,6 +3464,9 @@ class IssuesCompanion extends UpdateCompanion<Issue> {
     if (dueDate.present) {
       map['due_date'] = Variable<int>(dueDate.value);
     }
+    if (meta.present) {
+      map['meta'] = Variable<String>(meta.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<int>(createdAt.value);
     }
@@ -3345,6 +3478,12 @@ class IssuesCompanion extends UpdateCompanion<Issue> {
     }
     if (serverUpdatedAt.present) {
       map['server_updated_at'] = Variable<int>(serverUpdatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (syncStatus.present) {
+      map['sync_status'] = Variable<String>(syncStatus.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -3365,10 +3504,1771 @@ class IssuesCompanion extends UpdateCompanion<Issue> {
           ..write('category: $category, ')
           ..write('location: $location, ')
           ..write('dueDate: $dueDate, ')
+          ..write('meta: $meta, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('serverId: $serverId, ')
           ..write('serverUpdatedAt: $serverUpdatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $IssueCommentsTable extends IssueComments
+    with TableInfo<$IssueCommentsTable, IssueComment> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $IssueCommentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _issueLocalIdMeta = const VerificationMeta(
+    'issueLocalId',
+  );
+  @override
+  late final GeneratedColumn<String> issueLocalId = GeneratedColumn<String>(
+    'issue_local_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorIdMeta = const VerificationMeta(
+    'authorId',
+  );
+  @override
+  late final GeneratedColumn<String> authorId = GeneratedColumn<String>(
+    'author_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _bodyMeta = const VerificationMeta('body');
+  @override
+  late final GeneratedColumn<String> body = GeneratedColumn<String>(
+    'body',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<int> deletedAt = GeneratedColumn<int>(
+    'deleted_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _serverIdMeta = const VerificationMeta(
+    'serverId',
+  );
+  @override
+  late final GeneratedColumn<String> serverId = GeneratedColumn<String>(
+    'server_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _serverCreatedAtMeta = const VerificationMeta(
+    'serverCreatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> serverCreatedAt = GeneratedColumn<int>(
+    'server_created_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _serverUpdatedAtMeta = const VerificationMeta(
+    'serverUpdatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> serverUpdatedAt = GeneratedColumn<int>(
+    'server_updated_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('PENDING'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    issueLocalId,
+    authorId,
+    body,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    serverId,
+    serverCreatedAt,
+    serverUpdatedAt,
+    status,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'issue_comments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<IssueComment> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('issue_local_id')) {
+      context.handle(
+        _issueLocalIdMeta,
+        issueLocalId.isAcceptableOrUnknown(
+          data['issue_local_id']!,
+          _issueLocalIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_issueLocalIdMeta);
+    }
+    if (data.containsKey('author_id')) {
+      context.handle(
+        _authorIdMeta,
+        authorId.isAcceptableOrUnknown(data['author_id']!, _authorIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_authorIdMeta);
+    }
+    if (data.containsKey('body')) {
+      context.handle(
+        _bodyMeta,
+        body.isAcceptableOrUnknown(data['body']!, _bodyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_bodyMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    }
+    if (data.containsKey('server_id')) {
+      context.handle(
+        _serverIdMeta,
+        serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta),
+      );
+    }
+    if (data.containsKey('server_created_at')) {
+      context.handle(
+        _serverCreatedAtMeta,
+        serverCreatedAt.isAcceptableOrUnknown(
+          data['server_created_at']!,
+          _serverCreatedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('server_updated_at')) {
+      context.handle(
+        _serverUpdatedAtMeta,
+        serverUpdatedAt.isAcceptableOrUnknown(
+          data['server_updated_at']!,
+          _serverUpdatedAtMeta,
+        ),
+      );
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  IssueComment map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return IssueComment(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      issueLocalId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}issue_local_id'],
+      )!,
+      authorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_id'],
+      )!,
+      body: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}body'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}deleted_at'],
+      ),
+      serverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_id'],
+      ),
+      serverCreatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}server_created_at'],
+      ),
+      serverUpdatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}server_updated_at'],
+      ),
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+    );
+  }
+
+  @override
+  $IssueCommentsTable createAlias(String alias) {
+    return $IssueCommentsTable(attachedDatabase, alias);
+  }
+}
+
+class IssueComment extends DataClass implements Insertable<IssueComment> {
+  final String id;
+  final String issueLocalId;
+  final String authorId;
+  final String body;
+  final int createdAt;
+  final int updatedAt;
+  final int? deletedAt;
+  final String? serverId;
+  final int? serverCreatedAt;
+  final int? serverUpdatedAt;
+  final String status;
+  const IssueComment({
+    required this.id,
+    required this.issueLocalId,
+    required this.authorId,
+    required this.body,
+    required this.createdAt,
+    required this.updatedAt,
+    this.deletedAt,
+    this.serverId,
+    this.serverCreatedAt,
+    this.serverUpdatedAt,
+    required this.status,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['issue_local_id'] = Variable<String>(issueLocalId);
+    map['author_id'] = Variable<String>(authorId);
+    map['body'] = Variable<String>(body);
+    map['created_at'] = Variable<int>(createdAt);
+    map['updated_at'] = Variable<int>(updatedAt);
+    if (!nullToAbsent || deletedAt != null) {
+      map['deleted_at'] = Variable<int>(deletedAt);
+    }
+    if (!nullToAbsent || serverId != null) {
+      map['server_id'] = Variable<String>(serverId);
+    }
+    if (!nullToAbsent || serverCreatedAt != null) {
+      map['server_created_at'] = Variable<int>(serverCreatedAt);
+    }
+    if (!nullToAbsent || serverUpdatedAt != null) {
+      map['server_updated_at'] = Variable<int>(serverUpdatedAt);
+    }
+    map['status'] = Variable<String>(status);
+    return map;
+  }
+
+  IssueCommentsCompanion toCompanion(bool nullToAbsent) {
+    return IssueCommentsCompanion(
+      id: Value(id),
+      issueLocalId: Value(issueLocalId),
+      authorId: Value(authorId),
+      body: Value(body),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+      deletedAt: deletedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(deletedAt),
+      serverId: serverId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverId),
+      serverCreatedAt: serverCreatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverCreatedAt),
+      serverUpdatedAt: serverUpdatedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverUpdatedAt),
+      status: Value(status),
+    );
+  }
+
+  factory IssueComment.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return IssueComment(
+      id: serializer.fromJson<String>(json['id']),
+      issueLocalId: serializer.fromJson<String>(json['issueLocalId']),
+      authorId: serializer.fromJson<String>(json['authorId']),
+      body: serializer.fromJson<String>(json['body']),
+      createdAt: serializer.fromJson<int>(json['createdAt']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+      deletedAt: serializer.fromJson<int?>(json['deletedAt']),
+      serverId: serializer.fromJson<String?>(json['serverId']),
+      serverCreatedAt: serializer.fromJson<int?>(json['serverCreatedAt']),
+      serverUpdatedAt: serializer.fromJson<int?>(json['serverUpdatedAt']),
+      status: serializer.fromJson<String>(json['status']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'issueLocalId': serializer.toJson<String>(issueLocalId),
+      'authorId': serializer.toJson<String>(authorId),
+      'body': serializer.toJson<String>(body),
+      'createdAt': serializer.toJson<int>(createdAt),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+      'deletedAt': serializer.toJson<int?>(deletedAt),
+      'serverId': serializer.toJson<String?>(serverId),
+      'serverCreatedAt': serializer.toJson<int?>(serverCreatedAt),
+      'serverUpdatedAt': serializer.toJson<int?>(serverUpdatedAt),
+      'status': serializer.toJson<String>(status),
+    };
+  }
+
+  IssueComment copyWith({
+    String? id,
+    String? issueLocalId,
+    String? authorId,
+    String? body,
+    int? createdAt,
+    int? updatedAt,
+    Value<int?> deletedAt = const Value.absent(),
+    Value<String?> serverId = const Value.absent(),
+    Value<int?> serverCreatedAt = const Value.absent(),
+    Value<int?> serverUpdatedAt = const Value.absent(),
+    String? status,
+  }) => IssueComment(
+    id: id ?? this.id,
+    issueLocalId: issueLocalId ?? this.issueLocalId,
+    authorId: authorId ?? this.authorId,
+    body: body ?? this.body,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+    deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
+    serverId: serverId.present ? serverId.value : this.serverId,
+    serverCreatedAt: serverCreatedAt.present
+        ? serverCreatedAt.value
+        : this.serverCreatedAt,
+    serverUpdatedAt: serverUpdatedAt.present
+        ? serverUpdatedAt.value
+        : this.serverUpdatedAt,
+    status: status ?? this.status,
+  );
+  IssueComment copyWithCompanion(IssueCommentsCompanion data) {
+    return IssueComment(
+      id: data.id.present ? data.id.value : this.id,
+      issueLocalId: data.issueLocalId.present
+          ? data.issueLocalId.value
+          : this.issueLocalId,
+      authorId: data.authorId.present ? data.authorId.value : this.authorId,
+      body: data.body.present ? data.body.value : this.body,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+      serverId: data.serverId.present ? data.serverId.value : this.serverId,
+      serverCreatedAt: data.serverCreatedAt.present
+          ? data.serverCreatedAt.value
+          : this.serverCreatedAt,
+      serverUpdatedAt: data.serverUpdatedAt.present
+          ? data.serverUpdatedAt.value
+          : this.serverUpdatedAt,
+      status: data.status.present ? data.status.value : this.status,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IssueComment(')
+          ..write('id: $id, ')
+          ..write('issueLocalId: $issueLocalId, ')
+          ..write('authorId: $authorId, ')
+          ..write('body: $body, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('serverId: $serverId, ')
+          ..write('serverCreatedAt: $serverCreatedAt, ')
+          ..write('serverUpdatedAt: $serverUpdatedAt, ')
+          ..write('status: $status')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    issueLocalId,
+    authorId,
+    body,
+    createdAt,
+    updatedAt,
+    deletedAt,
+    serverId,
+    serverCreatedAt,
+    serverUpdatedAt,
+    status,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is IssueComment &&
+          other.id == this.id &&
+          other.issueLocalId == this.issueLocalId &&
+          other.authorId == this.authorId &&
+          other.body == this.body &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt &&
+          other.deletedAt == this.deletedAt &&
+          other.serverId == this.serverId &&
+          other.serverCreatedAt == this.serverCreatedAt &&
+          other.serverUpdatedAt == this.serverUpdatedAt &&
+          other.status == this.status);
+}
+
+class IssueCommentsCompanion extends UpdateCompanion<IssueComment> {
+  final Value<String> id;
+  final Value<String> issueLocalId;
+  final Value<String> authorId;
+  final Value<String> body;
+  final Value<int> createdAt;
+  final Value<int> updatedAt;
+  final Value<int?> deletedAt;
+  final Value<String?> serverId;
+  final Value<int?> serverCreatedAt;
+  final Value<int?> serverUpdatedAt;
+  final Value<String> status;
+  final Value<int> rowid;
+  const IssueCommentsCompanion({
+    this.id = const Value.absent(),
+    this.issueLocalId = const Value.absent(),
+    this.authorId = const Value.absent(),
+    this.body = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.serverId = const Value.absent(),
+    this.serverCreatedAt = const Value.absent(),
+    this.serverUpdatedAt = const Value.absent(),
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  IssueCommentsCompanion.insert({
+    required String id,
+    required String issueLocalId,
+    required String authorId,
+    required String body,
+    required int createdAt,
+    required int updatedAt,
+    this.deletedAt = const Value.absent(),
+    this.serverId = const Value.absent(),
+    this.serverCreatedAt = const Value.absent(),
+    this.serverUpdatedAt = const Value.absent(),
+    this.status = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       issueLocalId = Value(issueLocalId),
+       authorId = Value(authorId),
+       body = Value(body),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<IssueComment> custom({
+    Expression<String>? id,
+    Expression<String>? issueLocalId,
+    Expression<String>? authorId,
+    Expression<String>? body,
+    Expression<int>? createdAt,
+    Expression<int>? updatedAt,
+    Expression<int>? deletedAt,
+    Expression<String>? serverId,
+    Expression<int>? serverCreatedAt,
+    Expression<int>? serverUpdatedAt,
+    Expression<String>? status,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (issueLocalId != null) 'issue_local_id': issueLocalId,
+      if (authorId != null) 'author_id': authorId,
+      if (body != null) 'body': body,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (serverId != null) 'server_id': serverId,
+      if (serverCreatedAt != null) 'server_created_at': serverCreatedAt,
+      if (serverUpdatedAt != null) 'server_updated_at': serverUpdatedAt,
+      if (status != null) 'status': status,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  IssueCommentsCompanion copyWith({
+    Value<String>? id,
+    Value<String>? issueLocalId,
+    Value<String>? authorId,
+    Value<String>? body,
+    Value<int>? createdAt,
+    Value<int>? updatedAt,
+    Value<int?>? deletedAt,
+    Value<String?>? serverId,
+    Value<int?>? serverCreatedAt,
+    Value<int?>? serverUpdatedAt,
+    Value<String>? status,
+    Value<int>? rowid,
+  }) {
+    return IssueCommentsCompanion(
+      id: id ?? this.id,
+      issueLocalId: issueLocalId ?? this.issueLocalId,
+      authorId: authorId ?? this.authorId,
+      body: body ?? this.body,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      serverId: serverId ?? this.serverId,
+      serverCreatedAt: serverCreatedAt ?? this.serverCreatedAt,
+      serverUpdatedAt: serverUpdatedAt ?? this.serverUpdatedAt,
+      status: status ?? this.status,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (issueLocalId.present) {
+      map['issue_local_id'] = Variable<String>(issueLocalId.value);
+    }
+    if (authorId.present) {
+      map['author_id'] = Variable<String>(authorId.value);
+    }
+    if (body.present) {
+      map['body'] = Variable<String>(body.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<int>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<int>(deletedAt.value);
+    }
+    if (serverId.present) {
+      map['server_id'] = Variable<String>(serverId.value);
+    }
+    if (serverCreatedAt.present) {
+      map['server_created_at'] = Variable<int>(serverCreatedAt.value);
+    }
+    if (serverUpdatedAt.present) {
+      map['server_updated_at'] = Variable<int>(serverUpdatedAt.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IssueCommentsCompanion(')
+          ..write('id: $id, ')
+          ..write('issueLocalId: $issueLocalId, ')
+          ..write('authorId: $authorId, ')
+          ..write('body: $body, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('serverId: $serverId, ')
+          ..write('serverCreatedAt: $serverCreatedAt, ')
+          ..write('serverUpdatedAt: $serverUpdatedAt, ')
+          ..write('status: $status, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $IssueHistoryTable extends IssueHistory
+    with TableInfo<$IssueHistoryTable, IssueHistoryData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $IssueHistoryTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _issueIdMeta = const VerificationMeta(
+    'issueId',
+  );
+  @override
+  late final GeneratedColumn<String> issueId = GeneratedColumn<String>(
+    'issue_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actionMeta = const VerificationMeta('action');
+  @override
+  late final GeneratedColumn<String> action = GeneratedColumn<String>(
+    'action',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _fieldMeta = const VerificationMeta('field');
+  @override
+  late final GeneratedColumn<String> field = GeneratedColumn<String>(
+    'field',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _oldValueMeta = const VerificationMeta(
+    'oldValue',
+  );
+  @override
+  late final GeneratedColumn<String> oldValue = GeneratedColumn<String>(
+    'old_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _newValueMeta = const VerificationMeta(
+    'newValue',
+  );
+  @override
+  late final GeneratedColumn<String> newValue = GeneratedColumn<String>(
+    'new_value',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _authorIdMeta = const VerificationMeta(
+    'authorId',
+  );
+  @override
+  late final GeneratedColumn<String> authorId = GeneratedColumn<String>(
+    'author_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _timestampMeta = const VerificationMeta(
+    'timestamp',
+  );
+  @override
+  late final GeneratedColumn<int> timestamp = GeneratedColumn<int>(
+    'timestamp',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    issueId,
+    action,
+    field,
+    oldValue,
+    newValue,
+    authorId,
+    timestamp,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'issue_history';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<IssueHistoryData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('issue_id')) {
+      context.handle(
+        _issueIdMeta,
+        issueId.isAcceptableOrUnknown(data['issue_id']!, _issueIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_issueIdMeta);
+    }
+    if (data.containsKey('action')) {
+      context.handle(
+        _actionMeta,
+        action.isAcceptableOrUnknown(data['action']!, _actionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_actionMeta);
+    }
+    if (data.containsKey('field')) {
+      context.handle(
+        _fieldMeta,
+        field.isAcceptableOrUnknown(data['field']!, _fieldMeta),
+      );
+    }
+    if (data.containsKey('old_value')) {
+      context.handle(
+        _oldValueMeta,
+        oldValue.isAcceptableOrUnknown(data['old_value']!, _oldValueMeta),
+      );
+    }
+    if (data.containsKey('new_value')) {
+      context.handle(
+        _newValueMeta,
+        newValue.isAcceptableOrUnknown(data['new_value']!, _newValueMeta),
+      );
+    }
+    if (data.containsKey('author_id')) {
+      context.handle(
+        _authorIdMeta,
+        authorId.isAcceptableOrUnknown(data['author_id']!, _authorIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_authorIdMeta);
+    }
+    if (data.containsKey('timestamp')) {
+      context.handle(
+        _timestampMeta,
+        timestamp.isAcceptableOrUnknown(data['timestamp']!, _timestampMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_timestampMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  IssueHistoryData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return IssueHistoryData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      issueId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}issue_id'],
+      )!,
+      action: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}action'],
+      )!,
+      field: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}field'],
+      ),
+      oldValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}old_value'],
+      ),
+      newValue: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}new_value'],
+      ),
+      authorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_id'],
+      )!,
+      timestamp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}timestamp'],
+      )!,
+    );
+  }
+
+  @override
+  $IssueHistoryTable createAlias(String alias) {
+    return $IssueHistoryTable(attachedDatabase, alias);
+  }
+}
+
+class IssueHistoryData extends DataClass
+    implements Insertable<IssueHistoryData> {
+  final String id;
+  final String issueId;
+  final String action;
+  final String? field;
+  final String? oldValue;
+  final String? newValue;
+  final String authorId;
+  final int timestamp;
+  const IssueHistoryData({
+    required this.id,
+    required this.issueId,
+    required this.action,
+    this.field,
+    this.oldValue,
+    this.newValue,
+    required this.authorId,
+    required this.timestamp,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['issue_id'] = Variable<String>(issueId);
+    map['action'] = Variable<String>(action);
+    if (!nullToAbsent || field != null) {
+      map['field'] = Variable<String>(field);
+    }
+    if (!nullToAbsent || oldValue != null) {
+      map['old_value'] = Variable<String>(oldValue);
+    }
+    if (!nullToAbsent || newValue != null) {
+      map['new_value'] = Variable<String>(newValue);
+    }
+    map['author_id'] = Variable<String>(authorId);
+    map['timestamp'] = Variable<int>(timestamp);
+    return map;
+  }
+
+  IssueHistoryCompanion toCompanion(bool nullToAbsent) {
+    return IssueHistoryCompanion(
+      id: Value(id),
+      issueId: Value(issueId),
+      action: Value(action),
+      field: field == null && nullToAbsent
+          ? const Value.absent()
+          : Value(field),
+      oldValue: oldValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(oldValue),
+      newValue: newValue == null && nullToAbsent
+          ? const Value.absent()
+          : Value(newValue),
+      authorId: Value(authorId),
+      timestamp: Value(timestamp),
+    );
+  }
+
+  factory IssueHistoryData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return IssueHistoryData(
+      id: serializer.fromJson<String>(json['id']),
+      issueId: serializer.fromJson<String>(json['issueId']),
+      action: serializer.fromJson<String>(json['action']),
+      field: serializer.fromJson<String?>(json['field']),
+      oldValue: serializer.fromJson<String?>(json['oldValue']),
+      newValue: serializer.fromJson<String?>(json['newValue']),
+      authorId: serializer.fromJson<String>(json['authorId']),
+      timestamp: serializer.fromJson<int>(json['timestamp']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'issueId': serializer.toJson<String>(issueId),
+      'action': serializer.toJson<String>(action),
+      'field': serializer.toJson<String?>(field),
+      'oldValue': serializer.toJson<String?>(oldValue),
+      'newValue': serializer.toJson<String?>(newValue),
+      'authorId': serializer.toJson<String>(authorId),
+      'timestamp': serializer.toJson<int>(timestamp),
+    };
+  }
+
+  IssueHistoryData copyWith({
+    String? id,
+    String? issueId,
+    String? action,
+    Value<String?> field = const Value.absent(),
+    Value<String?> oldValue = const Value.absent(),
+    Value<String?> newValue = const Value.absent(),
+    String? authorId,
+    int? timestamp,
+  }) => IssueHistoryData(
+    id: id ?? this.id,
+    issueId: issueId ?? this.issueId,
+    action: action ?? this.action,
+    field: field.present ? field.value : this.field,
+    oldValue: oldValue.present ? oldValue.value : this.oldValue,
+    newValue: newValue.present ? newValue.value : this.newValue,
+    authorId: authorId ?? this.authorId,
+    timestamp: timestamp ?? this.timestamp,
+  );
+  IssueHistoryData copyWithCompanion(IssueHistoryCompanion data) {
+    return IssueHistoryData(
+      id: data.id.present ? data.id.value : this.id,
+      issueId: data.issueId.present ? data.issueId.value : this.issueId,
+      action: data.action.present ? data.action.value : this.action,
+      field: data.field.present ? data.field.value : this.field,
+      oldValue: data.oldValue.present ? data.oldValue.value : this.oldValue,
+      newValue: data.newValue.present ? data.newValue.value : this.newValue,
+      authorId: data.authorId.present ? data.authorId.value : this.authorId,
+      timestamp: data.timestamp.present ? data.timestamp.value : this.timestamp,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IssueHistoryData(')
+          ..write('id: $id, ')
+          ..write('issueId: $issueId, ')
+          ..write('action: $action, ')
+          ..write('field: $field, ')
+          ..write('oldValue: $oldValue, ')
+          ..write('newValue: $newValue, ')
+          ..write('authorId: $authorId, ')
+          ..write('timestamp: $timestamp')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    issueId,
+    action,
+    field,
+    oldValue,
+    newValue,
+    authorId,
+    timestamp,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is IssueHistoryData &&
+          other.id == this.id &&
+          other.issueId == this.issueId &&
+          other.action == this.action &&
+          other.field == this.field &&
+          other.oldValue == this.oldValue &&
+          other.newValue == this.newValue &&
+          other.authorId == this.authorId &&
+          other.timestamp == this.timestamp);
+}
+
+class IssueHistoryCompanion extends UpdateCompanion<IssueHistoryData> {
+  final Value<String> id;
+  final Value<String> issueId;
+  final Value<String> action;
+  final Value<String?> field;
+  final Value<String?> oldValue;
+  final Value<String?> newValue;
+  final Value<String> authorId;
+  final Value<int> timestamp;
+  final Value<int> rowid;
+  const IssueHistoryCompanion({
+    this.id = const Value.absent(),
+    this.issueId = const Value.absent(),
+    this.action = const Value.absent(),
+    this.field = const Value.absent(),
+    this.oldValue = const Value.absent(),
+    this.newValue = const Value.absent(),
+    this.authorId = const Value.absent(),
+    this.timestamp = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  IssueHistoryCompanion.insert({
+    required String id,
+    required String issueId,
+    required String action,
+    this.field = const Value.absent(),
+    this.oldValue = const Value.absent(),
+    this.newValue = const Value.absent(),
+    required String authorId,
+    required int timestamp,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       issueId = Value(issueId),
+       action = Value(action),
+       authorId = Value(authorId),
+       timestamp = Value(timestamp);
+  static Insertable<IssueHistoryData> custom({
+    Expression<String>? id,
+    Expression<String>? issueId,
+    Expression<String>? action,
+    Expression<String>? field,
+    Expression<String>? oldValue,
+    Expression<String>? newValue,
+    Expression<String>? authorId,
+    Expression<int>? timestamp,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (issueId != null) 'issue_id': issueId,
+      if (action != null) 'action': action,
+      if (field != null) 'field': field,
+      if (oldValue != null) 'old_value': oldValue,
+      if (newValue != null) 'new_value': newValue,
+      if (authorId != null) 'author_id': authorId,
+      if (timestamp != null) 'timestamp': timestamp,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  IssueHistoryCompanion copyWith({
+    Value<String>? id,
+    Value<String>? issueId,
+    Value<String>? action,
+    Value<String?>? field,
+    Value<String?>? oldValue,
+    Value<String?>? newValue,
+    Value<String>? authorId,
+    Value<int>? timestamp,
+    Value<int>? rowid,
+  }) {
+    return IssueHistoryCompanion(
+      id: id ?? this.id,
+      issueId: issueId ?? this.issueId,
+      action: action ?? this.action,
+      field: field ?? this.field,
+      oldValue: oldValue ?? this.oldValue,
+      newValue: newValue ?? this.newValue,
+      authorId: authorId ?? this.authorId,
+      timestamp: timestamp ?? this.timestamp,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (issueId.present) {
+      map['issue_id'] = Variable<String>(issueId.value);
+    }
+    if (action.present) {
+      map['action'] = Variable<String>(action.value);
+    }
+    if (field.present) {
+      map['field'] = Variable<String>(field.value);
+    }
+    if (oldValue.present) {
+      map['old_value'] = Variable<String>(oldValue.value);
+    }
+    if (newValue.present) {
+      map['new_value'] = Variable<String>(newValue.value);
+    }
+    if (authorId.present) {
+      map['author_id'] = Variable<String>(authorId.value);
+    }
+    if (timestamp.present) {
+      map['timestamp'] = Variable<int>(timestamp.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IssueHistoryCompanion(')
+          ..write('id: $id, ')
+          ..write('issueId: $issueId, ')
+          ..write('action: $action, ')
+          ..write('field: $field, ')
+          ..write('oldValue: $oldValue, ')
+          ..write('newValue: $newValue, ')
+          ..write('authorId: $authorId, ')
+          ..write('timestamp: $timestamp, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $IssueMediaTable extends IssueMedia
+    with TableInfo<$IssueMediaTable, IssueMediaData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $IssueMediaTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _issueIdMeta = const VerificationMeta(
+    'issueId',
+  );
+  @override
+  late final GeneratedColumn<String> issueId = GeneratedColumn<String>(
+    'issue_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _localPathMeta = const VerificationMeta(
+    'localPath',
+  );
+  @override
+  late final GeneratedColumn<String> localPath = GeneratedColumn<String>(
+    'local_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _thumbnailPathMeta = const VerificationMeta(
+    'thumbnailPath',
+  );
+  @override
+  late final GeneratedColumn<String> thumbnailPath = GeneratedColumn<String>(
+    'thumbnail_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _mimeTypeMeta = const VerificationMeta(
+    'mimeType',
+  );
+  @override
+  late final GeneratedColumn<String> mimeType = GeneratedColumn<String>(
+    'mime_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sizeBytesMeta = const VerificationMeta(
+    'sizeBytes',
+  );
+  @override
+  late final GeneratedColumn<int> sizeBytes = GeneratedColumn<int>(
+    'size_bytes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _serverIdMeta = const VerificationMeta(
+    'serverId',
+  );
+  @override
+  late final GeneratedColumn<String> serverId = GeneratedColumn<String>(
+    'server_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _serverUrlMeta = const VerificationMeta(
+    'serverUrl',
+  );
+  @override
+  late final GeneratedColumn<String> serverUrl = GeneratedColumn<String>(
+    'server_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _uploadStatusMeta = const VerificationMeta(
+    'uploadStatus',
+  );
+  @override
+  late final GeneratedColumn<String> uploadStatus = GeneratedColumn<String>(
+    'upload_status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('PENDING'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    issueId,
+    localPath,
+    thumbnailPath,
+    mimeType,
+    sizeBytes,
+    serverId,
+    serverUrl,
+    uploadStatus,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'issue_media';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<IssueMediaData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('issue_id')) {
+      context.handle(
+        _issueIdMeta,
+        issueId.isAcceptableOrUnknown(data['issue_id']!, _issueIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_issueIdMeta);
+    }
+    if (data.containsKey('local_path')) {
+      context.handle(
+        _localPathMeta,
+        localPath.isAcceptableOrUnknown(data['local_path']!, _localPathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_localPathMeta);
+    }
+    if (data.containsKey('thumbnail_path')) {
+      context.handle(
+        _thumbnailPathMeta,
+        thumbnailPath.isAcceptableOrUnknown(
+          data['thumbnail_path']!,
+          _thumbnailPathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('mime_type')) {
+      context.handle(
+        _mimeTypeMeta,
+        mimeType.isAcceptableOrUnknown(data['mime_type']!, _mimeTypeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mimeTypeMeta);
+    }
+    if (data.containsKey('size_bytes')) {
+      context.handle(
+        _sizeBytesMeta,
+        sizeBytes.isAcceptableOrUnknown(data['size_bytes']!, _sizeBytesMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sizeBytesMeta);
+    }
+    if (data.containsKey('server_id')) {
+      context.handle(
+        _serverIdMeta,
+        serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta),
+      );
+    }
+    if (data.containsKey('server_url')) {
+      context.handle(
+        _serverUrlMeta,
+        serverUrl.isAcceptableOrUnknown(data['server_url']!, _serverUrlMeta),
+      );
+    }
+    if (data.containsKey('upload_status')) {
+      context.handle(
+        _uploadStatusMeta,
+        uploadStatus.isAcceptableOrUnknown(
+          data['upload_status']!,
+          _uploadStatusMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  IssueMediaData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return IssueMediaData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      issueId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}issue_id'],
+      )!,
+      localPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_path'],
+      )!,
+      thumbnailPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}thumbnail_path'],
+      ),
+      mimeType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mime_type'],
+      )!,
+      sizeBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}size_bytes'],
+      )!,
+      serverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_id'],
+      ),
+      serverUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}server_url'],
+      ),
+      uploadStatus: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}upload_status'],
+      )!,
+    );
+  }
+
+  @override
+  $IssueMediaTable createAlias(String alias) {
+    return $IssueMediaTable(attachedDatabase, alias);
+  }
+}
+
+class IssueMediaData extends DataClass implements Insertable<IssueMediaData> {
+  final String id;
+  final String issueId;
+  final String localPath;
+  final String? thumbnailPath;
+  final String mimeType;
+  final int sizeBytes;
+  final String? serverId;
+  final String? serverUrl;
+  final String uploadStatus;
+  const IssueMediaData({
+    required this.id,
+    required this.issueId,
+    required this.localPath,
+    this.thumbnailPath,
+    required this.mimeType,
+    required this.sizeBytes,
+    this.serverId,
+    this.serverUrl,
+    required this.uploadStatus,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['issue_id'] = Variable<String>(issueId);
+    map['local_path'] = Variable<String>(localPath);
+    if (!nullToAbsent || thumbnailPath != null) {
+      map['thumbnail_path'] = Variable<String>(thumbnailPath);
+    }
+    map['mime_type'] = Variable<String>(mimeType);
+    map['size_bytes'] = Variable<int>(sizeBytes);
+    if (!nullToAbsent || serverId != null) {
+      map['server_id'] = Variable<String>(serverId);
+    }
+    if (!nullToAbsent || serverUrl != null) {
+      map['server_url'] = Variable<String>(serverUrl);
+    }
+    map['upload_status'] = Variable<String>(uploadStatus);
+    return map;
+  }
+
+  IssueMediaCompanion toCompanion(bool nullToAbsent) {
+    return IssueMediaCompanion(
+      id: Value(id),
+      issueId: Value(issueId),
+      localPath: Value(localPath),
+      thumbnailPath: thumbnailPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(thumbnailPath),
+      mimeType: Value(mimeType),
+      sizeBytes: Value(sizeBytes),
+      serverId: serverId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverId),
+      serverUrl: serverUrl == null && nullToAbsent
+          ? const Value.absent()
+          : Value(serverUrl),
+      uploadStatus: Value(uploadStatus),
+    );
+  }
+
+  factory IssueMediaData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return IssueMediaData(
+      id: serializer.fromJson<String>(json['id']),
+      issueId: serializer.fromJson<String>(json['issueId']),
+      localPath: serializer.fromJson<String>(json['localPath']),
+      thumbnailPath: serializer.fromJson<String?>(json['thumbnailPath']),
+      mimeType: serializer.fromJson<String>(json['mimeType']),
+      sizeBytes: serializer.fromJson<int>(json['sizeBytes']),
+      serverId: serializer.fromJson<String?>(json['serverId']),
+      serverUrl: serializer.fromJson<String?>(json['serverUrl']),
+      uploadStatus: serializer.fromJson<String>(json['uploadStatus']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'issueId': serializer.toJson<String>(issueId),
+      'localPath': serializer.toJson<String>(localPath),
+      'thumbnailPath': serializer.toJson<String?>(thumbnailPath),
+      'mimeType': serializer.toJson<String>(mimeType),
+      'sizeBytes': serializer.toJson<int>(sizeBytes),
+      'serverId': serializer.toJson<String?>(serverId),
+      'serverUrl': serializer.toJson<String?>(serverUrl),
+      'uploadStatus': serializer.toJson<String>(uploadStatus),
+    };
+  }
+
+  IssueMediaData copyWith({
+    String? id,
+    String? issueId,
+    String? localPath,
+    Value<String?> thumbnailPath = const Value.absent(),
+    String? mimeType,
+    int? sizeBytes,
+    Value<String?> serverId = const Value.absent(),
+    Value<String?> serverUrl = const Value.absent(),
+    String? uploadStatus,
+  }) => IssueMediaData(
+    id: id ?? this.id,
+    issueId: issueId ?? this.issueId,
+    localPath: localPath ?? this.localPath,
+    thumbnailPath: thumbnailPath.present
+        ? thumbnailPath.value
+        : this.thumbnailPath,
+    mimeType: mimeType ?? this.mimeType,
+    sizeBytes: sizeBytes ?? this.sizeBytes,
+    serverId: serverId.present ? serverId.value : this.serverId,
+    serverUrl: serverUrl.present ? serverUrl.value : this.serverUrl,
+    uploadStatus: uploadStatus ?? this.uploadStatus,
+  );
+  IssueMediaData copyWithCompanion(IssueMediaCompanion data) {
+    return IssueMediaData(
+      id: data.id.present ? data.id.value : this.id,
+      issueId: data.issueId.present ? data.issueId.value : this.issueId,
+      localPath: data.localPath.present ? data.localPath.value : this.localPath,
+      thumbnailPath: data.thumbnailPath.present
+          ? data.thumbnailPath.value
+          : this.thumbnailPath,
+      mimeType: data.mimeType.present ? data.mimeType.value : this.mimeType,
+      sizeBytes: data.sizeBytes.present ? data.sizeBytes.value : this.sizeBytes,
+      serverId: data.serverId.present ? data.serverId.value : this.serverId,
+      serverUrl: data.serverUrl.present ? data.serverUrl.value : this.serverUrl,
+      uploadStatus: data.uploadStatus.present
+          ? data.uploadStatus.value
+          : this.uploadStatus,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IssueMediaData(')
+          ..write('id: $id, ')
+          ..write('issueId: $issueId, ')
+          ..write('localPath: $localPath, ')
+          ..write('thumbnailPath: $thumbnailPath, ')
+          ..write('mimeType: $mimeType, ')
+          ..write('sizeBytes: $sizeBytes, ')
+          ..write('serverId: $serverId, ')
+          ..write('serverUrl: $serverUrl, ')
+          ..write('uploadStatus: $uploadStatus')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    issueId,
+    localPath,
+    thumbnailPath,
+    mimeType,
+    sizeBytes,
+    serverId,
+    serverUrl,
+    uploadStatus,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is IssueMediaData &&
+          other.id == this.id &&
+          other.issueId == this.issueId &&
+          other.localPath == this.localPath &&
+          other.thumbnailPath == this.thumbnailPath &&
+          other.mimeType == this.mimeType &&
+          other.sizeBytes == this.sizeBytes &&
+          other.serverId == this.serverId &&
+          other.serverUrl == this.serverUrl &&
+          other.uploadStatus == this.uploadStatus);
+}
+
+class IssueMediaCompanion extends UpdateCompanion<IssueMediaData> {
+  final Value<String> id;
+  final Value<String> issueId;
+  final Value<String> localPath;
+  final Value<String?> thumbnailPath;
+  final Value<String> mimeType;
+  final Value<int> sizeBytes;
+  final Value<String?> serverId;
+  final Value<String?> serverUrl;
+  final Value<String> uploadStatus;
+  final Value<int> rowid;
+  const IssueMediaCompanion({
+    this.id = const Value.absent(),
+    this.issueId = const Value.absent(),
+    this.localPath = const Value.absent(),
+    this.thumbnailPath = const Value.absent(),
+    this.mimeType = const Value.absent(),
+    this.sizeBytes = const Value.absent(),
+    this.serverId = const Value.absent(),
+    this.serverUrl = const Value.absent(),
+    this.uploadStatus = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  IssueMediaCompanion.insert({
+    required String id,
+    required String issueId,
+    required String localPath,
+    this.thumbnailPath = const Value.absent(),
+    required String mimeType,
+    required int sizeBytes,
+    this.serverId = const Value.absent(),
+    this.serverUrl = const Value.absent(),
+    this.uploadStatus = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       issueId = Value(issueId),
+       localPath = Value(localPath),
+       mimeType = Value(mimeType),
+       sizeBytes = Value(sizeBytes);
+  static Insertable<IssueMediaData> custom({
+    Expression<String>? id,
+    Expression<String>? issueId,
+    Expression<String>? localPath,
+    Expression<String>? thumbnailPath,
+    Expression<String>? mimeType,
+    Expression<int>? sizeBytes,
+    Expression<String>? serverId,
+    Expression<String>? serverUrl,
+    Expression<String>? uploadStatus,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (issueId != null) 'issue_id': issueId,
+      if (localPath != null) 'local_path': localPath,
+      if (thumbnailPath != null) 'thumbnail_path': thumbnailPath,
+      if (mimeType != null) 'mime_type': mimeType,
+      if (sizeBytes != null) 'size_bytes': sizeBytes,
+      if (serverId != null) 'server_id': serverId,
+      if (serverUrl != null) 'server_url': serverUrl,
+      if (uploadStatus != null) 'upload_status': uploadStatus,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  IssueMediaCompanion copyWith({
+    Value<String>? id,
+    Value<String>? issueId,
+    Value<String>? localPath,
+    Value<String?>? thumbnailPath,
+    Value<String>? mimeType,
+    Value<int>? sizeBytes,
+    Value<String?>? serverId,
+    Value<String?>? serverUrl,
+    Value<String>? uploadStatus,
+    Value<int>? rowid,
+  }) {
+    return IssueMediaCompanion(
+      id: id ?? this.id,
+      issueId: issueId ?? this.issueId,
+      localPath: localPath ?? this.localPath,
+      thumbnailPath: thumbnailPath ?? this.thumbnailPath,
+      mimeType: mimeType ?? this.mimeType,
+      sizeBytes: sizeBytes ?? this.sizeBytes,
+      serverId: serverId ?? this.serverId,
+      serverUrl: serverUrl ?? this.serverUrl,
+      uploadStatus: uploadStatus ?? this.uploadStatus,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (issueId.present) {
+      map['issue_id'] = Variable<String>(issueId.value);
+    }
+    if (localPath.present) {
+      map['local_path'] = Variable<String>(localPath.value);
+    }
+    if (thumbnailPath.present) {
+      map['thumbnail_path'] = Variable<String>(thumbnailPath.value);
+    }
+    if (mimeType.present) {
+      map['mime_type'] = Variable<String>(mimeType.value);
+    }
+    if (sizeBytes.present) {
+      map['size_bytes'] = Variable<int>(sizeBytes.value);
+    }
+    if (serverId.present) {
+      map['server_id'] = Variable<String>(serverId.value);
+    }
+    if (serverUrl.present) {
+      map['server_url'] = Variable<String>(serverUrl.value);
+    }
+    if (uploadStatus.present) {
+      map['upload_status'] = Variable<String>(uploadStatus.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('IssueMediaCompanion(')
+          ..write('id: $id, ')
+          ..write('issueId: $issueId, ')
+          ..write('localPath: $localPath, ')
+          ..write('thumbnailPath: $thumbnailPath, ')
+          ..write('mimeType: $mimeType, ')
+          ..write('sizeBytes: $sizeBytes, ')
+          ..write('serverId: $serverId, ')
+          ..write('serverUrl: $serverUrl, ')
+          ..write('uploadStatus: $uploadStatus, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4820,6 +6720,358 @@ class MetaCompanion extends UpdateCompanion<MetaData> {
   }
 }
 
+class $FormTemplatesTable extends FormTemplates
+    with TableInfo<$FormTemplatesTable, FormTemplate> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $FormTemplatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _schemaMeta = const VerificationMeta('schema');
+  @override
+  late final GeneratedColumn<String> schema = GeneratedColumn<String>(
+    'schema',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _versionMeta = const VerificationMeta(
+    'version',
+  );
+  @override
+  late final GeneratedColumn<int> version = GeneratedColumn<int>(
+    'version',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _lastSyncedMeta = const VerificationMeta(
+    'lastSynced',
+  );
+  @override
+  late final GeneratedColumn<int> lastSynced = GeneratedColumn<int>(
+    'last_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, schema, version, lastSynced];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'form_templates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<FormTemplate> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('schema')) {
+      context.handle(
+        _schemaMeta,
+        schema.isAcceptableOrUnknown(data['schema']!, _schemaMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_schemaMeta);
+    }
+    if (data.containsKey('version')) {
+      context.handle(
+        _versionMeta,
+        version.isAcceptableOrUnknown(data['version']!, _versionMeta),
+      );
+    }
+    if (data.containsKey('last_synced')) {
+      context.handle(
+        _lastSyncedMeta,
+        lastSynced.isAcceptableOrUnknown(data['last_synced']!, _lastSyncedMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_lastSyncedMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  FormTemplate map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return FormTemplate(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      schema: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}schema'],
+      )!,
+      version: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}version'],
+      )!,
+      lastSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}last_synced'],
+      )!,
+    );
+  }
+
+  @override
+  $FormTemplatesTable createAlias(String alias) {
+    return $FormTemplatesTable(attachedDatabase, alias);
+  }
+}
+
+class FormTemplate extends DataClass implements Insertable<FormTemplate> {
+  final String id;
+  final String name;
+  final String schema;
+  final int version;
+  final int lastSynced;
+  const FormTemplate({
+    required this.id,
+    required this.name,
+    required this.schema,
+    required this.version,
+    required this.lastSynced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['schema'] = Variable<String>(schema);
+    map['version'] = Variable<int>(version);
+    map['last_synced'] = Variable<int>(lastSynced);
+    return map;
+  }
+
+  FormTemplatesCompanion toCompanion(bool nullToAbsent) {
+    return FormTemplatesCompanion(
+      id: Value(id),
+      name: Value(name),
+      schema: Value(schema),
+      version: Value(version),
+      lastSynced: Value(lastSynced),
+    );
+  }
+
+  factory FormTemplate.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return FormTemplate(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      schema: serializer.fromJson<String>(json['schema']),
+      version: serializer.fromJson<int>(json['version']),
+      lastSynced: serializer.fromJson<int>(json['lastSynced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'schema': serializer.toJson<String>(schema),
+      'version': serializer.toJson<int>(version),
+      'lastSynced': serializer.toJson<int>(lastSynced),
+    };
+  }
+
+  FormTemplate copyWith({
+    String? id,
+    String? name,
+    String? schema,
+    int? version,
+    int? lastSynced,
+  }) => FormTemplate(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    schema: schema ?? this.schema,
+    version: version ?? this.version,
+    lastSynced: lastSynced ?? this.lastSynced,
+  );
+  FormTemplate copyWithCompanion(FormTemplatesCompanion data) {
+    return FormTemplate(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      schema: data.schema.present ? data.schema.value : this.schema,
+      version: data.version.present ? data.version.value : this.version,
+      lastSynced: data.lastSynced.present
+          ? data.lastSynced.value
+          : this.lastSynced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FormTemplate(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('schema: $schema, ')
+          ..write('version: $version, ')
+          ..write('lastSynced: $lastSynced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, schema, version, lastSynced);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is FormTemplate &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.schema == this.schema &&
+          other.version == this.version &&
+          other.lastSynced == this.lastSynced);
+}
+
+class FormTemplatesCompanion extends UpdateCompanion<FormTemplate> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> schema;
+  final Value<int> version;
+  final Value<int> lastSynced;
+  final Value<int> rowid;
+  const FormTemplatesCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.schema = const Value.absent(),
+    this.version = const Value.absent(),
+    this.lastSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  FormTemplatesCompanion.insert({
+    required String id,
+    required String name,
+    required String schema,
+    this.version = const Value.absent(),
+    required int lastSynced,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       schema = Value(schema),
+       lastSynced = Value(lastSynced);
+  static Insertable<FormTemplate> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? schema,
+    Expression<int>? version,
+    Expression<int>? lastSynced,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (schema != null) 'schema': schema,
+      if (version != null) 'version': version,
+      if (lastSynced != null) 'last_synced': lastSynced,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  FormTemplatesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? schema,
+    Value<int>? version,
+    Value<int>? lastSynced,
+    Value<int>? rowid,
+  }) {
+    return FormTemplatesCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      schema: schema ?? this.schema,
+      version: version ?? this.version,
+      lastSynced: lastSynced ?? this.lastSynced,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (schema.present) {
+      map['schema'] = Variable<String>(schema.value);
+    }
+    if (version.present) {
+      map['version'] = Variable<int>(version.value);
+    }
+    if (lastSynced.present) {
+      map['last_synced'] = Variable<int>(lastSynced.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('FormTemplatesCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('schema: $schema, ')
+          ..write('version: $version, ')
+          ..write('lastSynced: $lastSynced, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -4830,14 +7082,25 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   );
   late final $ReportsTable reports = $ReportsTable(this);
   late final $IssuesTable issues = $IssuesTable(this);
+  late final $IssueCommentsTable issueComments = $IssueCommentsTable(this);
+  late final $IssueHistoryTable issueHistory = $IssueHistoryTable(this);
+  late final $IssueMediaTable issueMedia = $IssueMediaTable(this);
   late final $MediaFilesTable mediaFiles = $MediaFilesTable(this);
   late final $SyncConflictsTable syncConflicts = $SyncConflictsTable(this);
   late final $MetaTable meta = $MetaTable(this);
+  late final $FormTemplatesTable formTemplates = $FormTemplatesTable(this);
   late final ProjectDao projectDao = ProjectDao(this as AppDatabase);
   late final SyncQueueDao syncQueueDao = SyncQueueDao(this as AppDatabase);
   late final AnalyticsDao analyticsDao = AnalyticsDao(this as AppDatabase);
   late final ReportDao reportDao = ReportDao(this as AppDatabase);
   late final IssueDao issueDao = IssueDao(this as AppDatabase);
+  late final IssueCommentDao issueCommentDao = IssueCommentDao(
+    this as AppDatabase,
+  );
+  late final IssueHistoryDao issueHistoryDao = IssueHistoryDao(
+    this as AppDatabase,
+  );
+  late final IssueMediaDao issueMediaDao = IssueMediaDao(this as AppDatabase);
   late final MediaDao mediaDao = MediaDao(this as AppDatabase);
   late final ConflictDao conflictDao = ConflictDao(this as AppDatabase);
   late final MetaDao metaDao = MetaDao(this as AppDatabase);
@@ -4851,9 +7114,13 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     projectAnalytics,
     reports,
     issues,
+    issueComments,
+    issueHistory,
+    issueMedia,
     mediaFiles,
     syncConflicts,
     meta,
+    formTemplates,
   ];
 }
 
@@ -6092,10 +8359,13 @@ typedef $$IssuesTableCreateCompanionBuilder =
       Value<String?> category,
       Value<String?> location,
       Value<int?> dueDate,
+      Value<String?> meta,
       required int createdAt,
       required int updatedAt,
       Value<String?> serverId,
       Value<int?> serverUpdatedAt,
+      Value<int?> deletedAt,
+      Value<String> syncStatus,
       Value<int> rowid,
     });
 typedef $$IssuesTableUpdateCompanionBuilder =
@@ -6110,10 +8380,13 @@ typedef $$IssuesTableUpdateCompanionBuilder =
       Value<String?> category,
       Value<String?> location,
       Value<int?> dueDate,
+      Value<String?> meta,
       Value<int> createdAt,
       Value<int> updatedAt,
       Value<String?> serverId,
       Value<int?> serverUpdatedAt,
+      Value<int?> deletedAt,
+      Value<String> syncStatus,
       Value<int> rowid,
     });
 
@@ -6176,6 +8449,11 @@ class $$IssuesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get meta => $composableBuilder(
+    column: $table.meta,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
@@ -6193,6 +8471,16 @@ class $$IssuesTableFilterComposer
 
   ColumnFilters<int> get serverUpdatedAt => $composableBuilder(
     column: $table.serverUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -6256,6 +8544,11 @@ class $$IssuesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get meta => $composableBuilder(
+    column: $table.meta,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -6273,6 +8566,16 @@ class $$IssuesTableOrderingComposer
 
   ColumnOrderings<int> get serverUpdatedAt => $composableBuilder(
     column: $table.serverUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -6320,6 +8623,9 @@ class $$IssuesTableAnnotationComposer
   GeneratedColumn<int> get dueDate =>
       $composableBuilder(column: $table.dueDate, builder: (column) => column);
 
+  GeneratedColumn<String> get meta =>
+      $composableBuilder(column: $table.meta, builder: (column) => column);
+
   GeneratedColumn<int> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -6331,6 +8637,14 @@ class $$IssuesTableAnnotationComposer
 
   GeneratedColumn<int> get serverUpdatedAt => $composableBuilder(
     column: $table.serverUpdatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get syncStatus => $composableBuilder(
+    column: $table.syncStatus,
     builder: (column) => column,
   );
 }
@@ -6373,10 +8687,13 @@ class $$IssuesTableTableManager
                 Value<String?> category = const Value.absent(),
                 Value<String?> location = const Value.absent(),
                 Value<int?> dueDate = const Value.absent(),
+                Value<String?> meta = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
                 Value<String?> serverId = const Value.absent(),
                 Value<int?> serverUpdatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => IssuesCompanion(
                 id: id,
@@ -6389,10 +8706,13 @@ class $$IssuesTableTableManager
                 category: category,
                 location: location,
                 dueDate: dueDate,
+                meta: meta,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 serverId: serverId,
                 serverUpdatedAt: serverUpdatedAt,
+                deletedAt: deletedAt,
+                syncStatus: syncStatus,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -6407,10 +8727,13 @@ class $$IssuesTableTableManager
                 Value<String?> category = const Value.absent(),
                 Value<String?> location = const Value.absent(),
                 Value<int?> dueDate = const Value.absent(),
+                Value<String?> meta = const Value.absent(),
                 required int createdAt,
                 required int updatedAt,
                 Value<String?> serverId = const Value.absent(),
                 Value<int?> serverUpdatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<String> syncStatus = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => IssuesCompanion.insert(
                 id: id,
@@ -6423,10 +8746,13 @@ class $$IssuesTableTableManager
                 category: category,
                 location: location,
                 dueDate: dueDate,
+                meta: meta,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 serverId: serverId,
                 serverUpdatedAt: serverUpdatedAt,
+                deletedAt: deletedAt,
+                syncStatus: syncStatus,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -6449,6 +8775,863 @@ typedef $$IssuesTableProcessedTableManager =
       $$IssuesTableUpdateCompanionBuilder,
       (Issue, BaseReferences<_$AppDatabase, $IssuesTable, Issue>),
       Issue,
+      PrefetchHooks Function()
+    >;
+typedef $$IssueCommentsTableCreateCompanionBuilder =
+    IssueCommentsCompanion Function({
+      required String id,
+      required String issueLocalId,
+      required String authorId,
+      required String body,
+      required int createdAt,
+      required int updatedAt,
+      Value<int?> deletedAt,
+      Value<String?> serverId,
+      Value<int?> serverCreatedAt,
+      Value<int?> serverUpdatedAt,
+      Value<String> status,
+      Value<int> rowid,
+    });
+typedef $$IssueCommentsTableUpdateCompanionBuilder =
+    IssueCommentsCompanion Function({
+      Value<String> id,
+      Value<String> issueLocalId,
+      Value<String> authorId,
+      Value<String> body,
+      Value<int> createdAt,
+      Value<int> updatedAt,
+      Value<int?> deletedAt,
+      Value<String?> serverId,
+      Value<int?> serverCreatedAt,
+      Value<int?> serverUpdatedAt,
+      Value<String> status,
+      Value<int> rowid,
+    });
+
+class $$IssueCommentsTableFilterComposer
+    extends Composer<_$AppDatabase, $IssueCommentsTable> {
+  $$IssueCommentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get issueLocalId => $composableBuilder(
+    column: $table.issueLocalId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorId => $composableBuilder(
+    column: $table.authorId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get serverCreatedAt => $composableBuilder(
+    column: $table.serverCreatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get serverUpdatedAt => $composableBuilder(
+    column: $table.serverUpdatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$IssueCommentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $IssueCommentsTable> {
+  $$IssueCommentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get issueLocalId => $composableBuilder(
+    column: $table.issueLocalId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorId => $composableBuilder(
+    column: $table.authorId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get body => $composableBuilder(
+    column: $table.body,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get serverCreatedAt => $composableBuilder(
+    column: $table.serverCreatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get serverUpdatedAt => $composableBuilder(
+    column: $table.serverUpdatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$IssueCommentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $IssueCommentsTable> {
+  $$IssueCommentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get issueLocalId => $composableBuilder(
+    column: $table.issueLocalId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get authorId =>
+      $composableBuilder(column: $table.authorId, builder: (column) => column);
+
+  GeneratedColumn<String> get body =>
+      $composableBuilder(column: $table.body, builder: (column) => column);
+
+  GeneratedColumn<int> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+
+  GeneratedColumn<String> get serverId =>
+      $composableBuilder(column: $table.serverId, builder: (column) => column);
+
+  GeneratedColumn<int> get serverCreatedAt => $composableBuilder(
+    column: $table.serverCreatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get serverUpdatedAt => $composableBuilder(
+    column: $table.serverUpdatedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+}
+
+class $$IssueCommentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $IssueCommentsTable,
+          IssueComment,
+          $$IssueCommentsTableFilterComposer,
+          $$IssueCommentsTableOrderingComposer,
+          $$IssueCommentsTableAnnotationComposer,
+          $$IssueCommentsTableCreateCompanionBuilder,
+          $$IssueCommentsTableUpdateCompanionBuilder,
+          (
+            IssueComment,
+            BaseReferences<_$AppDatabase, $IssueCommentsTable, IssueComment>,
+          ),
+          IssueComment,
+          PrefetchHooks Function()
+        > {
+  $$IssueCommentsTableTableManager(_$AppDatabase db, $IssueCommentsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$IssueCommentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$IssueCommentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$IssueCommentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> issueLocalId = const Value.absent(),
+                Value<String> authorId = const Value.absent(),
+                Value<String> body = const Value.absent(),
+                Value<int> createdAt = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int?> deletedAt = const Value.absent(),
+                Value<String?> serverId = const Value.absent(),
+                Value<int?> serverCreatedAt = const Value.absent(),
+                Value<int?> serverUpdatedAt = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => IssueCommentsCompanion(
+                id: id,
+                issueLocalId: issueLocalId,
+                authorId: authorId,
+                body: body,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                serverId: serverId,
+                serverCreatedAt: serverCreatedAt,
+                serverUpdatedAt: serverUpdatedAt,
+                status: status,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String issueLocalId,
+                required String authorId,
+                required String body,
+                required int createdAt,
+                required int updatedAt,
+                Value<int?> deletedAt = const Value.absent(),
+                Value<String?> serverId = const Value.absent(),
+                Value<int?> serverCreatedAt = const Value.absent(),
+                Value<int?> serverUpdatedAt = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => IssueCommentsCompanion.insert(
+                id: id,
+                issueLocalId: issueLocalId,
+                authorId: authorId,
+                body: body,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+                deletedAt: deletedAt,
+                serverId: serverId,
+                serverCreatedAt: serverCreatedAt,
+                serverUpdatedAt: serverUpdatedAt,
+                status: status,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$IssueCommentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $IssueCommentsTable,
+      IssueComment,
+      $$IssueCommentsTableFilterComposer,
+      $$IssueCommentsTableOrderingComposer,
+      $$IssueCommentsTableAnnotationComposer,
+      $$IssueCommentsTableCreateCompanionBuilder,
+      $$IssueCommentsTableUpdateCompanionBuilder,
+      (
+        IssueComment,
+        BaseReferences<_$AppDatabase, $IssueCommentsTable, IssueComment>,
+      ),
+      IssueComment,
+      PrefetchHooks Function()
+    >;
+typedef $$IssueHistoryTableCreateCompanionBuilder =
+    IssueHistoryCompanion Function({
+      required String id,
+      required String issueId,
+      required String action,
+      Value<String?> field,
+      Value<String?> oldValue,
+      Value<String?> newValue,
+      required String authorId,
+      required int timestamp,
+      Value<int> rowid,
+    });
+typedef $$IssueHistoryTableUpdateCompanionBuilder =
+    IssueHistoryCompanion Function({
+      Value<String> id,
+      Value<String> issueId,
+      Value<String> action,
+      Value<String?> field,
+      Value<String?> oldValue,
+      Value<String?> newValue,
+      Value<String> authorId,
+      Value<int> timestamp,
+      Value<int> rowid,
+    });
+
+class $$IssueHistoryTableFilterComposer
+    extends Composer<_$AppDatabase, $IssueHistoryTable> {
+  $$IssueHistoryTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get issueId => $composableBuilder(
+    column: $table.issueId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get field => $composableBuilder(
+    column: $table.field,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get oldValue => $composableBuilder(
+    column: $table.oldValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get newValue => $composableBuilder(
+    column: $table.newValue,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorId => $composableBuilder(
+    column: $table.authorId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$IssueHistoryTableOrderingComposer
+    extends Composer<_$AppDatabase, $IssueHistoryTable> {
+  $$IssueHistoryTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get issueId => $composableBuilder(
+    column: $table.issueId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get field => $composableBuilder(
+    column: $table.field,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get oldValue => $composableBuilder(
+    column: $table.oldValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get newValue => $composableBuilder(
+    column: $table.newValue,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorId => $composableBuilder(
+    column: $table.authorId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get timestamp => $composableBuilder(
+    column: $table.timestamp,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$IssueHistoryTableAnnotationComposer
+    extends Composer<_$AppDatabase, $IssueHistoryTable> {
+  $$IssueHistoryTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get issueId =>
+      $composableBuilder(column: $table.issueId, builder: (column) => column);
+
+  GeneratedColumn<String> get action =>
+      $composableBuilder(column: $table.action, builder: (column) => column);
+
+  GeneratedColumn<String> get field =>
+      $composableBuilder(column: $table.field, builder: (column) => column);
+
+  GeneratedColumn<String> get oldValue =>
+      $composableBuilder(column: $table.oldValue, builder: (column) => column);
+
+  GeneratedColumn<String> get newValue =>
+      $composableBuilder(column: $table.newValue, builder: (column) => column);
+
+  GeneratedColumn<String> get authorId =>
+      $composableBuilder(column: $table.authorId, builder: (column) => column);
+
+  GeneratedColumn<int> get timestamp =>
+      $composableBuilder(column: $table.timestamp, builder: (column) => column);
+}
+
+class $$IssueHistoryTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $IssueHistoryTable,
+          IssueHistoryData,
+          $$IssueHistoryTableFilterComposer,
+          $$IssueHistoryTableOrderingComposer,
+          $$IssueHistoryTableAnnotationComposer,
+          $$IssueHistoryTableCreateCompanionBuilder,
+          $$IssueHistoryTableUpdateCompanionBuilder,
+          (
+            IssueHistoryData,
+            BaseReferences<_$AppDatabase, $IssueHistoryTable, IssueHistoryData>,
+          ),
+          IssueHistoryData,
+          PrefetchHooks Function()
+        > {
+  $$IssueHistoryTableTableManager(_$AppDatabase db, $IssueHistoryTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$IssueHistoryTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$IssueHistoryTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$IssueHistoryTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> issueId = const Value.absent(),
+                Value<String> action = const Value.absent(),
+                Value<String?> field = const Value.absent(),
+                Value<String?> oldValue = const Value.absent(),
+                Value<String?> newValue = const Value.absent(),
+                Value<String> authorId = const Value.absent(),
+                Value<int> timestamp = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => IssueHistoryCompanion(
+                id: id,
+                issueId: issueId,
+                action: action,
+                field: field,
+                oldValue: oldValue,
+                newValue: newValue,
+                authorId: authorId,
+                timestamp: timestamp,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String issueId,
+                required String action,
+                Value<String?> field = const Value.absent(),
+                Value<String?> oldValue = const Value.absent(),
+                Value<String?> newValue = const Value.absent(),
+                required String authorId,
+                required int timestamp,
+                Value<int> rowid = const Value.absent(),
+              }) => IssueHistoryCompanion.insert(
+                id: id,
+                issueId: issueId,
+                action: action,
+                field: field,
+                oldValue: oldValue,
+                newValue: newValue,
+                authorId: authorId,
+                timestamp: timestamp,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$IssueHistoryTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $IssueHistoryTable,
+      IssueHistoryData,
+      $$IssueHistoryTableFilterComposer,
+      $$IssueHistoryTableOrderingComposer,
+      $$IssueHistoryTableAnnotationComposer,
+      $$IssueHistoryTableCreateCompanionBuilder,
+      $$IssueHistoryTableUpdateCompanionBuilder,
+      (
+        IssueHistoryData,
+        BaseReferences<_$AppDatabase, $IssueHistoryTable, IssueHistoryData>,
+      ),
+      IssueHistoryData,
+      PrefetchHooks Function()
+    >;
+typedef $$IssueMediaTableCreateCompanionBuilder =
+    IssueMediaCompanion Function({
+      required String id,
+      required String issueId,
+      required String localPath,
+      Value<String?> thumbnailPath,
+      required String mimeType,
+      required int sizeBytes,
+      Value<String?> serverId,
+      Value<String?> serverUrl,
+      Value<String> uploadStatus,
+      Value<int> rowid,
+    });
+typedef $$IssueMediaTableUpdateCompanionBuilder =
+    IssueMediaCompanion Function({
+      Value<String> id,
+      Value<String> issueId,
+      Value<String> localPath,
+      Value<String?> thumbnailPath,
+      Value<String> mimeType,
+      Value<int> sizeBytes,
+      Value<String?> serverId,
+      Value<String?> serverUrl,
+      Value<String> uploadStatus,
+      Value<int> rowid,
+    });
+
+class $$IssueMediaTableFilterComposer
+    extends Composer<_$AppDatabase, $IssueMediaTable> {
+  $$IssueMediaTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get issueId => $composableBuilder(
+    column: $table.issueId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localPath => $composableBuilder(
+    column: $table.localPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get thumbnailPath => $composableBuilder(
+    column: $table.thumbnailPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mimeType => $composableBuilder(
+    column: $table.mimeType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sizeBytes => $composableBuilder(
+    column: $table.sizeBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get serverUrl => $composableBuilder(
+    column: $table.serverUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get uploadStatus => $composableBuilder(
+    column: $table.uploadStatus,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$IssueMediaTableOrderingComposer
+    extends Composer<_$AppDatabase, $IssueMediaTable> {
+  $$IssueMediaTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get issueId => $composableBuilder(
+    column: $table.issueId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localPath => $composableBuilder(
+    column: $table.localPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get thumbnailPath => $composableBuilder(
+    column: $table.thumbnailPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mimeType => $composableBuilder(
+    column: $table.mimeType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sizeBytes => $composableBuilder(
+    column: $table.sizeBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get serverUrl => $composableBuilder(
+    column: $table.serverUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get uploadStatus => $composableBuilder(
+    column: $table.uploadStatus,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$IssueMediaTableAnnotationComposer
+    extends Composer<_$AppDatabase, $IssueMediaTable> {
+  $$IssueMediaTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get issueId =>
+      $composableBuilder(column: $table.issueId, builder: (column) => column);
+
+  GeneratedColumn<String> get localPath =>
+      $composableBuilder(column: $table.localPath, builder: (column) => column);
+
+  GeneratedColumn<String> get thumbnailPath => $composableBuilder(
+    column: $table.thumbnailPath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get mimeType =>
+      $composableBuilder(column: $table.mimeType, builder: (column) => column);
+
+  GeneratedColumn<int> get sizeBytes =>
+      $composableBuilder(column: $table.sizeBytes, builder: (column) => column);
+
+  GeneratedColumn<String> get serverId =>
+      $composableBuilder(column: $table.serverId, builder: (column) => column);
+
+  GeneratedColumn<String> get serverUrl =>
+      $composableBuilder(column: $table.serverUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get uploadStatus => $composableBuilder(
+    column: $table.uploadStatus,
+    builder: (column) => column,
+  );
+}
+
+class $$IssueMediaTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $IssueMediaTable,
+          IssueMediaData,
+          $$IssueMediaTableFilterComposer,
+          $$IssueMediaTableOrderingComposer,
+          $$IssueMediaTableAnnotationComposer,
+          $$IssueMediaTableCreateCompanionBuilder,
+          $$IssueMediaTableUpdateCompanionBuilder,
+          (
+            IssueMediaData,
+            BaseReferences<_$AppDatabase, $IssueMediaTable, IssueMediaData>,
+          ),
+          IssueMediaData,
+          PrefetchHooks Function()
+        > {
+  $$IssueMediaTableTableManager(_$AppDatabase db, $IssueMediaTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$IssueMediaTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$IssueMediaTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$IssueMediaTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> issueId = const Value.absent(),
+                Value<String> localPath = const Value.absent(),
+                Value<String?> thumbnailPath = const Value.absent(),
+                Value<String> mimeType = const Value.absent(),
+                Value<int> sizeBytes = const Value.absent(),
+                Value<String?> serverId = const Value.absent(),
+                Value<String?> serverUrl = const Value.absent(),
+                Value<String> uploadStatus = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => IssueMediaCompanion(
+                id: id,
+                issueId: issueId,
+                localPath: localPath,
+                thumbnailPath: thumbnailPath,
+                mimeType: mimeType,
+                sizeBytes: sizeBytes,
+                serverId: serverId,
+                serverUrl: serverUrl,
+                uploadStatus: uploadStatus,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String issueId,
+                required String localPath,
+                Value<String?> thumbnailPath = const Value.absent(),
+                required String mimeType,
+                required int sizeBytes,
+                Value<String?> serverId = const Value.absent(),
+                Value<String?> serverUrl = const Value.absent(),
+                Value<String> uploadStatus = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => IssueMediaCompanion.insert(
+                id: id,
+                issueId: issueId,
+                localPath: localPath,
+                thumbnailPath: thumbnailPath,
+                mimeType: mimeType,
+                sizeBytes: sizeBytes,
+                serverId: serverId,
+                serverUrl: serverUrl,
+                uploadStatus: uploadStatus,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$IssueMediaTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $IssueMediaTable,
+      IssueMediaData,
+      $$IssueMediaTableFilterComposer,
+      $$IssueMediaTableOrderingComposer,
+      $$IssueMediaTableAnnotationComposer,
+      $$IssueMediaTableCreateCompanionBuilder,
+      $$IssueMediaTableUpdateCompanionBuilder,
+      (
+        IssueMediaData,
+        BaseReferences<_$AppDatabase, $IssueMediaTable, IssueMediaData>,
+      ),
+      IssueMediaData,
       PrefetchHooks Function()
     >;
 typedef $$MediaFilesTableCreateCompanionBuilder =
@@ -7181,6 +10364,208 @@ typedef $$MetaTableProcessedTableManager =
       MetaData,
       PrefetchHooks Function()
     >;
+typedef $$FormTemplatesTableCreateCompanionBuilder =
+    FormTemplatesCompanion Function({
+      required String id,
+      required String name,
+      required String schema,
+      Value<int> version,
+      required int lastSynced,
+      Value<int> rowid,
+    });
+typedef $$FormTemplatesTableUpdateCompanionBuilder =
+    FormTemplatesCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> schema,
+      Value<int> version,
+      Value<int> lastSynced,
+      Value<int> rowid,
+    });
+
+class $$FormTemplatesTableFilterComposer
+    extends Composer<_$AppDatabase, $FormTemplatesTable> {
+  $$FormTemplatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get schema => $composableBuilder(
+    column: $table.schema,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lastSynced => $composableBuilder(
+    column: $table.lastSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$FormTemplatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $FormTemplatesTable> {
+  $$FormTemplatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get schema => $composableBuilder(
+    column: $table.schema,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get version => $composableBuilder(
+    column: $table.version,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get lastSynced => $composableBuilder(
+    column: $table.lastSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$FormTemplatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $FormTemplatesTable> {
+  $$FormTemplatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get schema =>
+      $composableBuilder(column: $table.schema, builder: (column) => column);
+
+  GeneratedColumn<int> get version =>
+      $composableBuilder(column: $table.version, builder: (column) => column);
+
+  GeneratedColumn<int> get lastSynced => $composableBuilder(
+    column: $table.lastSynced,
+    builder: (column) => column,
+  );
+}
+
+class $$FormTemplatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $FormTemplatesTable,
+          FormTemplate,
+          $$FormTemplatesTableFilterComposer,
+          $$FormTemplatesTableOrderingComposer,
+          $$FormTemplatesTableAnnotationComposer,
+          $$FormTemplatesTableCreateCompanionBuilder,
+          $$FormTemplatesTableUpdateCompanionBuilder,
+          (
+            FormTemplate,
+            BaseReferences<_$AppDatabase, $FormTemplatesTable, FormTemplate>,
+          ),
+          FormTemplate,
+          PrefetchHooks Function()
+        > {
+  $$FormTemplatesTableTableManager(_$AppDatabase db, $FormTemplatesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$FormTemplatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$FormTemplatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$FormTemplatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> schema = const Value.absent(),
+                Value<int> version = const Value.absent(),
+                Value<int> lastSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => FormTemplatesCompanion(
+                id: id,
+                name: name,
+                schema: schema,
+                version: version,
+                lastSynced: lastSynced,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String schema,
+                Value<int> version = const Value.absent(),
+                required int lastSynced,
+                Value<int> rowid = const Value.absent(),
+              }) => FormTemplatesCompanion.insert(
+                id: id,
+                name: name,
+                schema: schema,
+                version: version,
+                lastSynced: lastSynced,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$FormTemplatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $FormTemplatesTable,
+      FormTemplate,
+      $$FormTemplatesTableFilterComposer,
+      $$FormTemplatesTableOrderingComposer,
+      $$FormTemplatesTableAnnotationComposer,
+      $$FormTemplatesTableCreateCompanionBuilder,
+      $$FormTemplatesTableUpdateCompanionBuilder,
+      (
+        FormTemplate,
+        BaseReferences<_$AppDatabase, $FormTemplatesTable, FormTemplate>,
+      ),
+      FormTemplate,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7195,9 +10580,17 @@ class $AppDatabaseManager {
       $$ReportsTableTableManager(_db, _db.reports);
   $$IssuesTableTableManager get issues =>
       $$IssuesTableTableManager(_db, _db.issues);
+  $$IssueCommentsTableTableManager get issueComments =>
+      $$IssueCommentsTableTableManager(_db, _db.issueComments);
+  $$IssueHistoryTableTableManager get issueHistory =>
+      $$IssueHistoryTableTableManager(_db, _db.issueHistory);
+  $$IssueMediaTableTableManager get issueMedia =>
+      $$IssueMediaTableTableManager(_db, _db.issueMedia);
   $$MediaFilesTableTableManager get mediaFiles =>
       $$MediaFilesTableTableManager(_db, _db.mediaFiles);
   $$SyncConflictsTableTableManager get syncConflicts =>
       $$SyncConflictsTableTableManager(_db, _db.syncConflicts);
   $$MetaTableTableManager get meta => $$MetaTableTableManager(_db, _db.meta);
+  $$FormTemplatesTableTableManager get formTemplates =>
+      $$FormTemplatesTableTableManager(_db, _db.formTemplates);
 }

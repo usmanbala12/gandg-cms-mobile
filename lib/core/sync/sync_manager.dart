@@ -12,6 +12,11 @@ import '../db/db_utils.dart';
 import '../network/api_client.dart';
 import '../db/repositories/report_repository.dart';
 import '../db/repositories/media_repository.dart';
+import '../../features/issues/domain/repositories/issue_repository.dart';
+import '../db/daos/issue_dao.dart';
+import '../db/daos/issue_comment_dao.dart';
+import '../../features/issues/data/models/issue_model.dart';
+import '../../features/issues/data/models/issue_comment_model.dart';
 
 /// SyncManager orchestrates the offline-first sync workflow.
 /// Handles outgoing batch processing, downloading changes, and conflict resolution.
@@ -23,6 +28,9 @@ class SyncManager {
   final ApiClient apiClient;
   final ReportRepository reportRepository;
   final MediaRepository mediaRepository;
+  final IssueRepository issueRepository;
+  final IssueDao issueDao;
+  final IssueCommentDao issueCommentDao;
   final Logger logger;
 
   SyncManager({
@@ -33,6 +41,9 @@ class SyncManager {
     required this.apiClient,
     required this.reportRepository,
     required this.mediaRepository,
+    required this.issueRepository,
+    required this.issueDao,
+    required this.issueCommentDao,
     Logger? logger,
   }) : logger = logger ?? Logger();
 
@@ -139,8 +150,12 @@ class SyncManager {
           break;
 
         case 'issue':
-          // TODO: Implement issue sync processing
-          logger.w('Issue sync processing not yet implemented');
+          await issueRepository.processSyncQueueItem(
+            item.projectId,
+            item.entityId,
+            item.action,
+            item.payload,
+          );
           break;
 
         default:
@@ -238,8 +253,52 @@ class SyncManager {
       logger.i('Applying created entity: $entityType/$entityId');
 
       // TODO: Route to appropriate DAO based on entityType
-      // For now, just log
-      logger.i('Created entity applied: $entityType/$entityId');
+      if (entityType == 'issue') {
+        final model = IssueModel.fromJson(entity);
+        // Check if already exists by serverId to avoid duplicates
+        final existing = await issueDao.getIssueByServerId(model.serverId!);
+        if (existing == null) {
+          await issueDao.insertIssue(model.toCompanion());
+          logger.i('Created issue applied: ${model.id}');
+        } else {
+          logger.i('Issue already exists, skipping create: ${model.id}');
+        }
+      } else if (entityType == 'issue_comment') {
+        final model = IssueCommentModel.fromJson(entity);
+        // We need to ensure the issue exists locally.
+        // The issue_local_id in model might be a server ID if it came from server.
+        // We need to resolve the local ID of the issue using the issue's server ID.
+        // However, IssueCommentModel.fromJson maps issue_local_id from json.
+        // If the server sends 'issue_id' (server ID), we need to find the local ID.
+
+        // Assuming the backend sends 'issue_id' which is the server ID of the issue.
+        // And 'issue_local_id' is NOT sent by server.
+        // So we need to look up the issue by server ID.
+
+        final issueServerId = entity['issue_id'] ?? entity['issueId'];
+        if (issueServerId != null) {
+          final issue = await issueDao.getIssueByServerId(issueServerId);
+          if (issue != null) {
+            // Create a copy of model with correct local issue ID
+            final correctModel = IssueCommentModel(
+              id: model.id,
+              issueLocalId: issue.id,
+              authorId: model.authorId,
+              body: model.body,
+              createdAt: model.createdAt,
+              serverId: model.serverId,
+              serverCreatedAt: model.serverCreatedAt,
+              status: 'SYNCED',
+            );
+            await issueCommentDao.insertComment(correctModel.toCompanion());
+            logger.i('Created comment applied: ${model.id}');
+          } else {
+            logger.w('Parent issue not found for comment: ${model.id}');
+          }
+        }
+      } else {
+        logger.i('Unknown entity type for create: $entityType');
+      }
     } catch (e) {
       logger.e('Error applying created entity: $e');
       rethrow;
@@ -258,8 +317,38 @@ class SyncManager {
       logger.i('Applying updated entity: $entityType/$entityId');
 
       // TODO: Route to appropriate DAO based on entityType
-      // For now, just log
-      logger.i('Updated entity applied: $entityType/$entityId');
+      if (entityType == 'issue') {
+        final model = IssueModel.fromJson(entity);
+        final existing = await issueDao.getIssueByServerId(model.serverId!);
+        if (existing != null) {
+          // Update existing using its local ID
+          final updateModel = IssueModel(
+            id: existing.id, // Keep local ID
+            projectId: model.projectId,
+            title: model.title,
+            description: model.description,
+            priority: model.priority,
+            assigneeId: model.assigneeId,
+            status: model.status,
+            category: model.category,
+            location: model.location,
+            dueDate: model.dueDate,
+            createdAt: existing.createdAt, // Keep local created_at
+            updatedAt: model.updatedAt,
+            serverId: model.serverId,
+            serverUpdatedAt: model.serverUpdatedAt,
+            meta: model.meta,
+          );
+          await issueDao.updateIssue(updateModel.toCompanion());
+          logger.i('Updated issue applied: ${model.id}');
+        } else {
+          // Treat as create if not found
+          await issueDao.insertIssue(model.toCompanion());
+          logger.i('Updated issue not found, created instead: ${model.id}');
+        }
+      } else {
+        logger.i('Unknown entity type for update: $entityType');
+      }
     } catch (e) {
       logger.e('Error applying updated entity: $e');
       rethrow;
@@ -278,8 +367,22 @@ class SyncManager {
       logger.i('Applying deleted entity: $entityType/$entityId');
 
       // TODO: Route to appropriate DAO based on entityType
-      // For now, just log
-      logger.i('Deleted entity applied: $entityType/$entityId');
+      if (entityType == 'issue') {
+        final existing = await issueDao.getIssueByServerId(entityId);
+        if (existing != null) {
+          await issueDao.deleteIssue(existing.id);
+          logger.i('Deleted issue applied: $entityId');
+        }
+      } else if (entityType == 'issue_comment') {
+        // Comments usually don't have a direct lookup by server ID in DAO yet?
+        // I didn't add getCommentByServerId.
+        // But I can query by ID if I used server ID as ID.
+        // Or I can ignore comment deletion for now or fetch all and filter.
+        // For now, skipping comment deletion sync.
+        logger.w('Comment deletion sync not implemented');
+      } else {
+        logger.i('Unknown entity type for delete: $entityType');
+      }
     } catch (e) {
       logger.e('Error applying deleted entity: $e');
       rethrow;

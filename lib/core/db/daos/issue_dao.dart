@@ -63,10 +63,99 @@ class IssueDao extends DatabaseAccessor<AppDatabase> with _$IssueDaoMixin {
   }
 
   Future<int> deleteIssue(String id) async {
-    return (delete(issues)..where((t) => t.id.equals(id))).go();
+    // Soft delete
+    return (update(issues)..where((t) => t.id.equals(id))).write(
+      IssuesCompanion(
+        deletedAt: Value(DateTime.now().millisecondsSinceEpoch),
+        syncStatus: const Value('PENDING'),
+      ),
+    );
+  }
+
+  Future<void> updateSyncStatus(String id, String status) async {
+    await (update(issues)..where((t) => t.id.equals(id))).write(
+      IssuesCompanion(syncStatus: Value(status)),
+    );
   }
 
   Future<Issue?> getIssueById(String id) async {
     return (select(issues)..where((t) => t.id.equals(id))).getSingleOrNull();
+  }
+
+  Future<Issue?> getIssueByServerId(String serverId) async {
+    return (select(
+      issues,
+    )..where((t) => t.serverId.equals(serverId))).getSingleOrNull();
+  }
+
+  Future<void> updateIssueStatus(String localId, String newStatus) async {
+    await (update(issues)..where((t) => t.id.equals(localId))).write(
+      IssuesCompanion(
+        status: Value(newStatus),
+        updatedAt: Value(DateTime.now().millisecondsSinceEpoch),
+      ),
+    );
+  }
+
+  Future<List<Issue>> getIssuesByStatus(
+    String projectId,
+    String status, {
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    return (select(issues)
+          ..where(
+            (t) => t.projectId.equals(projectId) & t.status.equals(status),
+          )
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+          ])
+          ..limit(limit, offset: offset))
+        .get();
+  }
+
+  Future<List<Issue>> getIssuesByPriority(
+    String projectId,
+    String priority, {
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    return (select(issues)
+          ..where(
+            (t) => t.projectId.equals(projectId) & t.priority.equals(priority),
+          )
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+          ])
+          ..limit(limit, offset: offset))
+        .get();
+  }
+
+  Future<List<Issue>> searchIssues(
+    String projectId,
+    String query, {
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    final searchPattern = '%$query%';
+    return (select(issues)
+          ..where(
+            (t) =>
+                t.projectId.equals(projectId) &
+                (t.title.like(searchPattern) |
+                    t.description.like(searchPattern)),
+          )
+          ..orderBy([
+            (t) =>
+                OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc),
+          ])
+          ..limit(limit, offset: offset))
+        .get();
+  }
+
+  Stream<Issue?> watchIssueById(String id) {
+    return (select(issues)..where((t) => t.id.equals(id))).watchSingleOrNull();
   }
 }

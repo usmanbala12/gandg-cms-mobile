@@ -38,19 +38,16 @@ class DashboardCubit extends Cubit<DashboardState> {
     try {
       _logger.i('📥 Fetching projects...');
 
-      // Check for cached projects first to show something immediately
-      projects = await _repository.getProjects(forceRemote: false);
+      // Fetch projects with remote-first logic
+      final result = await _repository.getProjects(forceRemote: false);
+      projects = result.data;
 
-      // If we have 0 projects, it might be because we're not authenticated
-      // The repository logs this warning, but we should handle it in the UI too
-      if (projects.isEmpty) {
-        // We can't easily check auth status here without injecting TokenStorageService
-        // but the repository handles the auth check internally.
-        // If we get 0 projects, we might want to trigger a refresh which forces remote
-        // and will throw DashboardAuthorizationException if not authenticated.
+      // If we have 0 projects and result is from local cache, try remote
+      if (projects.isEmpty && result.isLocal) {
         _logger.i('⚠️ No projects found in cache. Attempting remote fetch...');
         try {
-          projects = await _repository.getProjects(forceRemote: true);
+          final remoteResult = await _repository.getProjects(forceRemote: true);
+          projects = remoteResult.data;
         } catch (e) {
           // If this fails, we'll catch it below
           if (e is DashboardAuthorizationException) {
@@ -146,18 +143,19 @@ class DashboardCubit extends Cubit<DashboardState> {
     );
 
     try {
-      final analytics = await _repository.getProjectAnalytics(
+      final result = await _repository.getProjectAnalytics(
         targetId,
         forceRefresh: forceRefresh,
       );
-      _logger.i('✅ Analytics loaded successfully');
+      final analytics = result.data;
+      _logger.i('✅ Analytics loaded successfully (source: ${result.source})');
       emit(
         state.copyWith(
           analytics: analytics,
           loading: false,
-          lastSynced: analytics.lastSyncedAt,
+          lastSynced: result.lastSyncedAt,
           analyticsStale: analytics.isStale || analytics.isExpired,
-          offline: false,
+          offline: result.isLocal,
           requiresReauthentication: false,
         ),
       );

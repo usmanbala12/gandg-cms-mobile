@@ -68,6 +68,7 @@ void main() {
       // Arrange
       when(() => mockDb.transaction(any())).thenAnswer((invocation) async {
         await invocation.positionalArguments[0]();
+        return null;
       });
       when(() => mockReportDao.insertReport(any())).thenAnswer((_) async {});
       when(() => mockSyncQueueDao.enqueue(any())).thenAnswer((_) async {});
@@ -141,24 +142,30 @@ void main() {
         );
         when(() => mockDb.transaction(any())).thenAnswer((invocation) async {
           await invocation.positionalArguments[0]();
+          return null;
         });
         when(() => mockReportDao.insertReport(any())).thenAnswer((_) async {});
         when(
           () => mockReportDao.getReports(
-            projectId: any(named: 'projectId'),
-            limit: any(named: 'limit'),
-            offset: any(named: 'offset'),
+            projectId: 'proj1',
+            limit: 50,
+            offset: 0,
           ),
         ).thenAnswer((_) async => [tReportRow]);
 
         // Act
-        await repository.getReports(projectId: 'proj1', forceRemote: true);
+        final result = await repository.getReports(
+          projectId: 'proj1',
+          forceRemote: true,
+        );
 
         // Assert
         verify(
           () => mockRemoteDataSource.fetchProjectReports('proj1'),
         ).called(1);
         verify(() => mockReportDao.insertReport(any())).called(1);
+        expect(result.length, 1);
+        expect(result.first.id, '1');
       },
     );
   });

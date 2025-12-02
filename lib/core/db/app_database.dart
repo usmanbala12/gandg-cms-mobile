@@ -12,17 +12,25 @@ import 'tables/sync_queue.dart';
 import 'tables/project_analytics.dart';
 import 'tables/reports.dart';
 import 'tables/issues.dart';
+import 'tables/issue_comments.dart';
 import 'tables/media.dart';
 import 'tables/sync_conflicts.dart';
 import 'tables/meta.dart';
+import 'tables/form_templates.dart';
 import 'daos/project_dao.dart';
 import 'daos/sync_queue_dao.dart';
 import 'daos/analytics_dao.dart';
 import 'daos/report_dao.dart';
 import 'daos/issue_dao.dart';
+import 'daos/issue_comment_dao.dart';
 import 'daos/media_dao.dart';
 import 'daos/conflict_dao.dart';
 import 'daos/meta_dao.dart';
+
+import 'tables/issue_history.dart';
+import 'tables/issue_media.dart';
+import 'daos/issue_history_dao.dart';
+import 'daos/issue_media_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -33,9 +41,13 @@ part 'app_database.g.dart';
     ProjectAnalytics,
     Reports,
     Issues,
+    IssueComments,
+    IssueHistory,
+    IssueMedia,
     MediaFiles,
     SyncConflicts,
     Meta,
+    FormTemplates,
   ],
   daos: [
     ProjectDao,
@@ -43,6 +55,9 @@ part 'app_database.g.dart';
     AnalyticsDao,
     ReportDao,
     IssueDao,
+    IssueCommentDao,
+    IssueHistoryDao,
+    IssueMediaDao,
     MediaDao,
     ConflictDao,
     MetaDao,
@@ -56,7 +71,7 @@ class AppDatabase extends _$AppDatabase {
 
   // Increment this when making schema changes and add proper migrations.
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -66,9 +81,21 @@ class AppDatabase extends _$AppDatabase {
     onUpgrade: (m, from, to) async {
       // Add migration steps when schemaVersion increases.
       // Example template:
-      // if (from == 1) {
-      //   await m.addColumn(syncQueue, syncQueue.attempts);
-      // }
+      if (from < 2) {
+        await m.createTable(formTemplates);
+      }
+      if (from < 3) {
+        await m.createTable(issueComments);
+      }
+      if (from < 4) {
+        await m.createTable(issueHistory);
+        await m.createTable(issueMedia);
+        await m.addColumn(issues, issues.deletedAt);
+        await m.addColumn(issues, issues.syncStatus);
+        await m.addColumn(issueComments, issueComments.updatedAt);
+        await m.addColumn(issueComments, issueComments.serverUpdatedAt);
+        await m.addColumn(issueComments, issueComments.deletedAt);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -90,6 +117,7 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS idx_issues_project_id ON issues(project_id);',
       'CREATE INDEX IF NOT EXISTS idx_issues_status ON issues(status);',
       'CREATE INDEX IF NOT EXISTS idx_issues_server_id ON issues(server_id);',
+      'CREATE INDEX IF NOT EXISTS idx_issue_comments_issue_id ON issue_comments(issue_local_id, created_at ASC);',
       'CREATE INDEX IF NOT EXISTS idx_media_project_id ON media_files(project_id);',
       'CREATE INDEX IF NOT EXISTS idx_media_upload_status ON media_files(upload_status);',
       'CREATE INDEX IF NOT EXISTS idx_media_parent_lookup ON media_files(parent_type, parent_id);',

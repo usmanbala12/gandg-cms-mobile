@@ -3,16 +3,20 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart' hide isNotNull;
+import 'package:matcher/matcher.dart' as matcher;
 import 'package:mocktail/mocktail.dart';
 
 import 'package:field_link/core/db/app_database.dart';
 import 'package:field_link/core/db/daos/sync_queue_dao.dart';
 import 'package:field_link/core/db/daos/meta_dao.dart';
 import 'package:field_link/core/db/daos/conflict_dao.dart';
+import 'package:field_link/core/db/daos/issue_dao.dart';
+import 'package:field_link/core/db/daos/issue_comment_dao.dart';
 import 'package:field_link/core/db/db_utils.dart';
 import 'package:field_link/core/network/api_client.dart';
 import 'package:field_link/core/db/repositories/report_repository.dart';
 import 'package:field_link/core/db/repositories/media_repository.dart';
+import 'package:field_link/features/issues/domain/repositories/issue_repository.dart';
 import 'package:field_link/core/sync/sync_manager.dart';
 
 // Mock classes
@@ -21,6 +25,12 @@ class MockApiClient extends Mock implements ApiClient {}
 class MockReportRepository extends Mock implements ReportRepository {}
 
 class MockMediaRepository extends Mock implements MediaRepository {}
+
+class MockIssueRepository extends Mock implements IssueRepository {}
+
+class MockIssueDao extends Mock implements IssueDao {}
+
+class MockIssueCommentDao extends Mock implements IssueCommentDao {}
 
 void main() {
   group('SyncManager', () {
@@ -31,6 +41,9 @@ void main() {
     late MockApiClient mockApiClient;
     late MockReportRepository mockReportRepository;
     late MockMediaRepository mockMediaRepository;
+    late MockIssueRepository mockIssueRepository;
+    late MockIssueDao mockIssueDao;
+    late MockIssueCommentDao mockIssueCommentDao;
     late SyncManager syncManager;
 
     setUp(() async {
@@ -41,6 +54,9 @@ void main() {
       mockApiClient = MockApiClient();
       mockReportRepository = MockReportRepository();
       mockMediaRepository = MockMediaRepository();
+      mockIssueRepository = MockIssueRepository();
+      mockIssueDao = MockIssueDao();
+      mockIssueCommentDao = MockIssueCommentDao();
 
       syncManager = SyncManager(
         db: db,
@@ -50,6 +66,9 @@ void main() {
         apiClient: mockApiClient,
         reportRepository: mockReportRepository,
         mediaRepository: mockMediaRepository,
+        issueRepository: mockIssueRepository,
+        issueDao: mockIssueDao,
+        issueCommentDao: mockIssueCommentDao,
       );
     });
 
@@ -157,8 +176,10 @@ void main() {
 
       // Verify meta was updated
       final lastSyncStr = await metaDao.getValue('last_sync_p1');
-      expect(lastSyncStr, isNotNull);
-      expect(int.tryParse(lastSyncStr!), isNotNull);
+      expect(lastSyncStr, matcher.isNotNull);
+      final parsedTime = int.tryParse(lastSyncStr!);
+      expect(parsedTime, matcher.isNotNull);
+      expect(parsedTime! > 0, true);
     });
 
     test('_downloadAndApply inserts conflicts', () async {
@@ -287,7 +308,10 @@ void main() {
 
       // Verify meta was updated
       final lastSync = await metaDao.getValue('last_sync_p1');
-      expect(lastSync, isNotNull);
+      expect(lastSync, matcher.isNotNull);
+      final parsedTime = int.tryParse(lastSync!);
+      expect(parsedTime, matcher.isNotNull);
+      expect(parsedTime! > 0, true);
     });
   });
 }

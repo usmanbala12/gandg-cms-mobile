@@ -5,4 +5,5 @@ part of 'report_dao.dart';
 // ignore_for_file: type=lint
 mixin _$ReportDaoMixin on DatabaseAccessor<AppDatabase> {
   $ReportsTable get reports => attachedDatabase.reports;
+  $FormTemplatesTable get formTemplates => attachedDatabase.formTemplates;
 }

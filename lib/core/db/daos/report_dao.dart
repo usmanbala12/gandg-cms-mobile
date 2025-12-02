@@ -3,10 +3,11 @@ import 'package:drift/drift.dart';
 
 import '../app_database.dart';
 import '../tables/reports.dart';
+import '../tables/form_templates.dart';
 
 part 'report_dao.g.dart';
 
-@DriftAccessor(tables: [Reports])
+@DriftAccessor(tables: [Reports, FormTemplates])
 class ReportDao extends DatabaseAccessor<AppDatabase> with _$ReportDaoMixin {
   ReportDao(super.db);
 
@@ -72,8 +73,22 @@ class ReportDao extends DatabaseAccessor<AppDatabase> with _$ReportDaoMixin {
     return query.watch();
   }
 
-  Future<int> deleteReport(String id) async {
-    return (delete(reports)..where((t) => t.id.equals(id))).go();
+  Future<void> deleteReport(String id) async {
+    await (delete(reports)..where((tbl) => tbl.id.equals(id))).go();
+  }
+
+  Future<void> upsertTemplates(List<FormTemplatesCompanion> templates) async {
+    await batch((batch) {
+      batch.insertAllOnConflictUpdate(formTemplates, templates);
+    });
+  }
+
+  Future<List<FormTemplate>> getTemplates() => select(formTemplates).get();
+
+  Future<FormTemplate?> getTemplateById(String id) {
+    return (select(
+      formTemplates,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
   }
 
   Future<Report?> getReportById(String id) async {
