@@ -21,11 +21,12 @@ class ReportModel extends ReportEntity {
   });
 
   factory ReportModel.fromJson(Map<String, dynamic> json) {
+    final now = DateTime.now().millisecondsSinceEpoch;
     return ReportModel(
       id: json['id'] as String,
       projectId: json['project_id'] as String,
       formTemplateId: json['form_template_id'] as String?,
-      reportDate: json['report_date'] as int,
+      reportDate: json['report_date'] as int? ?? now,
       submissionData: json['submission_data'] != null
           ? json['submission_data'] as Map<String, dynamic>
           : null,
@@ -36,8 +37,8 @@ class ReportModel extends ReportEntity {
           ? List<String>.from(json['media_ids'] as List)
           : null,
       status: json['status'] as String? ?? 'SYNCED',
-      createdAt: json['created_at'] as int,
-      updatedAt: json['updated_at'] as int,
+      createdAt: json['created_at'] as int? ?? now,
+      updatedAt: json['updated_at'] as int? ?? now,
       serverId: json['server_id'] as String?,
       serverUpdatedAt: json['server_updated_at'] as int?,
     );

@@ -153,7 +153,9 @@ class DashboardCubit extends Cubit<DashboardState> {
         state.copyWith(
           analytics: analytics,
           loading: false,
-          lastSynced: result.lastSyncedAt,
+          lastSynced: result.lastSyncedAt != null
+              ? DateTime.fromMillisecondsSinceEpoch(result.lastSyncedAt!)
+              : null,
           analyticsStale: analytics.isStale || analytics.isExpired,
           offline: result.isLocal,
           requiresReauthentication: false,

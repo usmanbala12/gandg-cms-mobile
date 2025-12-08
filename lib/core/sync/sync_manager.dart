@@ -12,6 +12,7 @@ import '../db/db_utils.dart';
 import '../network/api_client.dart';
 import '../db/repositories/report_repository.dart';
 import '../db/repositories/media_repository.dart';
+import '../../features/requests/domain/repositories/request_repository.dart';
 import '../../features/issues/domain/repositories/issue_repository.dart';
 import '../db/daos/issue_dao.dart';
 import '../db/daos/issue_comment_dao.dart';
@@ -29,6 +30,7 @@ class SyncManager {
   final ReportRepository reportRepository;
   final MediaRepository mediaRepository;
   final IssueRepository issueRepository;
+  final RequestRepository requestRepository;
   final IssueDao issueDao;
   final IssueCommentDao issueCommentDao;
   final Logger logger;
@@ -42,6 +44,7 @@ class SyncManager {
     required this.reportRepository,
     required this.mediaRepository,
     required this.issueRepository,
+    required this.requestRepository,
     required this.issueDao,
     required this.issueCommentDao,
     Logger? logger,
@@ -151,6 +154,15 @@ class SyncManager {
 
         case 'issue':
           await issueRepository.processSyncQueueItem(
+            item.projectId,
+            item.entityId,
+            item.action,
+            item.payload,
+          );
+          break;
+
+        case 'request':
+          await requestRepository.processSyncQueueItem(
             item.projectId,
             item.entityId,
             item.action,

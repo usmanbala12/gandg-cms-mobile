@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:field_link/core/db/app_database.dart';
+import 'package:field_link/core/domain/repository_result.dart';
 import 'package:field_link/features/dashboard/data/repositories/dashboard_repository_impl.dart';
 import 'package:field_link/features/dashboard/domain/analytics_entity.dart';
 import 'package:field_link/features/dashboard/presentation/bloc/dashboard_cubit.dart';
@@ -68,7 +69,7 @@ void main() {
 
     when(
       () => repository.getProjects(forceRemote: any(named: 'forceRemote')),
-    ).thenAnswer((_) async => [sampleProject]);
+    ).thenAnswer((_) async => RepositoryResult.remote([sampleProject]));
     when(
       repository.getActiveProjectId,
     ).thenAnswer((_) async => sampleProject.id);
@@ -77,7 +78,7 @@ void main() {
         any(),
         forceRefresh: any(named: 'forceRefresh'),
       ),
-    ).thenAnswer((_) async => analytics);
+    ).thenAnswer((_) async => RepositoryResult.remote(analytics));
 
     cubit = DashboardCubit(repository: repository);
   });
@@ -109,7 +110,9 @@ void main() {
     );
     when(
       () => repository.getProjects(forceRemote: any(named: 'forceRemote')),
-    ).thenAnswer((_) async => [sampleProject, anotherProject]);
+    ).thenAnswer(
+      (_) async => RepositoryResult.remote([sampleProject, anotherProject]),
+    );
     when(
       repository.getActiveProjectId,
     ).thenAnswer((_) async => anotherProject.id);
@@ -130,7 +133,7 @@ void main() {
         anotherProject.id,
         forceRefresh: any(named: 'forceRefresh'),
       ),
-    ).thenAnswer((_) async => otherAnalytics);
+    ).thenAnswer((_) async => RepositoryResult.remote(otherAnalytics));
     projectStream.add([sampleProject, anotherProject]);
 
     await cubit.selectProject(anotherProject.id);

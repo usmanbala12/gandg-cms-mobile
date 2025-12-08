@@ -17,6 +17,7 @@ import 'package:field_link/core/network/api_client.dart';
 import 'package:field_link/core/db/repositories/report_repository.dart';
 import 'package:field_link/core/db/repositories/media_repository.dart';
 import 'package:field_link/features/issues/domain/repositories/issue_repository.dart';
+import 'package:field_link/features/requests/domain/repositories/request_repository.dart';
 import 'package:field_link/core/sync/sync_manager.dart';
 
 // Mock classes
@@ -25,6 +26,8 @@ class MockApiClient extends Mock implements ApiClient {}
 class MockReportRepository extends Mock implements ReportRepository {}
 
 class MockMediaRepository extends Mock implements MediaRepository {}
+
+class MockRequestRepository extends Mock implements RequestRepository {}
 
 class MockIssueRepository extends Mock implements IssueRepository {}
 
@@ -41,6 +44,7 @@ void main() {
     late MockApiClient mockApiClient;
     late MockReportRepository mockReportRepository;
     late MockMediaRepository mockMediaRepository;
+    late MockRequestRepository mockRequestRepository;
     late MockIssueRepository mockIssueRepository;
     late MockIssueDao mockIssueDao;
     late MockIssueCommentDao mockIssueCommentDao;
@@ -54,6 +58,7 @@ void main() {
       mockApiClient = MockApiClient();
       mockReportRepository = MockReportRepository();
       mockMediaRepository = MockMediaRepository();
+      mockRequestRepository = MockRequestRepository();
       mockIssueRepository = MockIssueRepository();
       mockIssueDao = MockIssueDao();
       mockIssueCommentDao = MockIssueCommentDao();
@@ -66,6 +71,7 @@ void main() {
         apiClient: mockApiClient,
         reportRepository: mockReportRepository,
         mediaRepository: mockMediaRepository,
+        requestRepository: mockRequestRepository,
         issueRepository: mockIssueRepository,
         issueDao: mockIssueDao,
         issueCommentDao: mockIssueCommentDao,

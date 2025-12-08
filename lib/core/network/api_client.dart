@@ -47,9 +47,8 @@ class ApiClient {
       final authHeader = requestHeaders['Authorization'];
       if (authHeader != null) {
         final token = authHeader.toString().replaceFirst('Bearer ', '');
-        final preview = token.length > 10
-            ? '${token.substring(0, 10)}...'
-            : token;
+        final preview =
+            token.length > 10 ? '${token.substring(0, 10)}...' : token;
         logger.i('🔑 Request sent with Token: Bearer $preview');
       } else {
         logger.w('⚠️ Request sent WITHOUT Authorization header');
@@ -604,6 +603,116 @@ class ApiClient {
       return {};
     } catch (e) {
       logger.e('Error fetching report $reportId for project $projectId: $e');
+      rethrow;
+    }
+  }
+
+  // ========== REQUEST ENDPOINTS ==========
+
+  /// Fetch requests for a project.
+  /// TODO: Adjust response shape based on actual backend contract.
+  Future<List<Map<String, dynamic>>> fetchProjectRequests(
+    String projectId, {
+    int limit = 50,
+    int offset = 0,
+    Map<String, dynamic>? filters,
+  }) async {
+    try {
+      final queryParams = {
+        'limit': limit,
+        'offset': offset,
+        if (filters != null) ...filters,
+      };
+
+      final response = await dio.get(
+        '/api/v1/projects/$projectId/requests',
+        queryParameters: queryParams,
+      );
+      logger.i(
+        'Fetched requests for project $projectId: ${response.statusCode}',
+      );
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        // Handle paginated response: data -> data -> content
+        if (data is Map &&
+            data['data'] is Map &&
+            data['data']['content'] is List) {
+          return List<Map<String, dynamic>>.from(data['data']['content']);
+        }
+        // Handle direct list response: data -> data
+        if (data is Map && data['data'] is List) {
+          return List<Map<String, dynamic>>.from(data['data']);
+        } else if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        }
+      }
+      return [];
+    } catch (e) {
+      logger.e('Error fetching requests for project $projectId: $e');
+      rethrow;
+    }
+  }
+
+  /// Create a new request on the server.
+  /// TODO: Adjust payload and response shape based on actual backend contract.
+  Future<Map<String, dynamic>> createRequest(
+    String projectId,
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final response = await dio.post(
+        '/api/v1/projects/$projectId/requests',
+        data: payload,
+      );
+      logger.i('Created request in project $projectId: ${response.statusCode}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return response.data is Map ? response.data : {};
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error creating request in project $projectId: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch a single request details.
+  /// TODO: Adjust response shape based on actual backend contract.
+  Future<Map<String, dynamic>> fetchRequestDetails(String requestId) async {
+    try {
+      final response = await dio.get('/api/v1/requests/$requestId');
+      logger.i('Fetched request $requestId: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return response.data is Map ? response.data : {};
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error fetching request $requestId: $e');
+      rethrow;
+    }
+  }
+
+  /// Update an existing request on the server.
+  /// TODO: Adjust payload and response shape based on actual backend contract.
+  Future<Map<String, dynamic>> updateRequest(
+    String requestId,
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final response = await dio.patch(
+        '/api/v1/requests/$requestId',
+        data: payload,
+      );
+      logger.i('Updated request $requestId: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return response.data is Map ? response.data : {};
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error updating request $requestId: $e');
       rethrow;
     }
   }

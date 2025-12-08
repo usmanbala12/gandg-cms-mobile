@@ -268,6 +268,16 @@ class DashboardRepositoryImpl implements DashboardRepository {
       );
     }
 
+    // Return cached data if not stale and not forcing refresh
+    if (!forceRefresh && cached != null && !isStale) {
+      _logger.i('📦 Returning fresh cached analytics');
+      return RepositoryResult.local(
+        AnalyticsEntity.fromRow(cached, now: nowUtc, isStale: false),
+        message: 'Showing cached data.',
+        lastSyncedAt: lastSynced,
+      );
+    }
+
     // Online - fetch from remote
     try {
       final remote = await _apiClient.fetchProjectAnalytics(projectId);

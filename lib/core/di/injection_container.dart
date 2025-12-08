@@ -19,6 +19,7 @@ import '../db/daos/issue_media_dao.dart';
 import '../db/daos/media_dao.dart';
 import '../db/daos/conflict_dao.dart';
 import '../db/daos/meta_dao.dart';
+import '../db/daos/request_dao.dart';
 import '../db/repositories/report_repository.dart';
 import '../db/repositories/media_repository.dart';
 import '../sync/sync_manager.dart';
@@ -41,6 +42,17 @@ import '../../features/issues/data/repositories/issue_repository_impl.dart';
 import '../../features/issues/domain/repositories/issue_repository.dart';
 
 import '../../features/issues/presentation/bloc/issues_bloc.dart';
+import '../../features/requests/data/datasources/request_remote_datasource.dart';
+import '../../features/requests/data/repositories/request_repository_impl.dart';
+import '../../features/requests/domain/repositories/request_repository.dart';
+import '../../features/requests/presentation/cubit/request_create_cubit.dart';
+import '../../features/requests/presentation/cubit/requests_cubit.dart';
+import '../../core/db/daos/notification_dao.dart';
+import '../../features/notifications/data/datasources/notification_remote_datasource.dart';
+import '../../features/notifications/data/repositories/notification_repository_impl.dart';
+import '../../features/notifications/domain/repositories/notification_repository.dart';
+import '../../features/notifications/presentation/cubit/notifications_cubit.dart';
+import '../../features/settings/presentation/cubit/settings_cubit.dart';
 
 final sl = GetIt.instance;
 
@@ -84,6 +96,7 @@ Future<void> initDependencies({required String baseUrl}) async {
   sl.registerLazySingleton<MediaDao>(() => MediaDao(sl<AppDatabase>()));
   sl.registerLazySingleton<ConflictDao>(() => ConflictDao(sl<AppDatabase>()));
   sl.registerLazySingleton<MetaDao>(() => MetaDao(sl<AppDatabase>()));
+  sl.registerLazySingleton<RequestDao>(() => RequestDao(sl<AppDatabase>()));
 
   // Network
   sl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl());
@@ -141,6 +154,7 @@ Future<void> initDependencies({required String baseUrl}) async {
       reportRepository: sl(),
       mediaRepository: sl(),
       issueRepository: sl(),
+      requestRepository: sl(),
       issueDao: sl(),
       issueCommentDao: sl(),
     ),
@@ -191,6 +205,50 @@ Future<void> initDependencies({required String baseUrl}) async {
   sl.registerFactory(() => DashboardCubit(repository: sl()));
 
   sl.registerFactory(() => IssuesBloc(repository: sl()));
+
+  // Features - Requests
+  sl.registerLazySingleton<RequestRemoteDataSource>(
+    () => RequestRemoteDataSource(sl()),
+  );
+
+  sl.registerLazySingleton<RequestRepository>(
+    () => RequestRepositoryImpl(
+      db: sl(),
+      requestDao: sl(),
+      metaDao: sl(),
+      syncQueueDao: sl(),
+      remoteDataSource: sl(),
+      networkInfo: sl(),
+    ),
+  );
+
+  sl.registerFactory(() => RequestsCubit(repository: sl()));
+  sl.registerFactory(() => RequestCreateCubit(repository: sl()));
+
+  // Features - Notifications
+  sl.registerLazySingleton<NotificationDao>(
+    () => NotificationDao(sl<AppDatabase>()),
+  );
+
+  sl.registerLazySingleton<NotificationRemoteDataSource>(
+    () => NotificationRemoteDataSource(sl()),
+  );
+
+  sl.registerLazySingleton<NotificationRepository>(
+    () => NotificationRepositoryImpl(
+      notificationDao: sl(),
+      remoteDataSource: sl(),
+      networkInfo: sl(),
+    ),
+  );
+
+  sl.registerFactory(() => NotificationsCubit(repository: sl()));
+
+  // Features - Settings
+  sl.registerFactory(() => SettingsCubit(
+        syncManager: sl(),
+        sharedPreferences: sl(),
+      ));
 }
 
 /// Backward-compatible init function that uses default base URL.

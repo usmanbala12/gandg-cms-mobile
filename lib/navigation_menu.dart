@@ -1,11 +1,14 @@
-//import 'package:field_link/app_home.dart';
+import 'package:field_link/core/di/injection_container.dart';
 import 'package:field_link/core/utils/constants/colors.dart';
 import 'package:field_link/core/utils/helpers/helper_function.dart';
 import 'package:field_link/features/dashboard/presentation/pages/dashboard_page.dart';
+import 'package:field_link/features/more/presentation/pages/more_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
 
 import 'package:field_link/features/reports/presentation/pages/reports_list_page.dart';
+import 'package:field_link/features/issues/presentation/bloc/issues_bloc.dart';
 import 'package:field_link/features/issues/presentation/pages/issues_list_page.dart';
 
 class NavigationMenu extends StatelessWidget {
@@ -109,13 +112,16 @@ class NavigationController extends GetxController {
   final Rx<int> selectedIndex;
 
   NavigationController({int initialIndex = 0})
-    : selectedIndex = initialIndex.obs;
+      : selectedIndex = initialIndex.obs;
 
   final screens = [
     const DashboardPage(),
     const ReportsListPage(),
-    const IssuesListPage(),
-    const Placeholder(),
-    const Placeholder(),
+    BlocProvider(
+      create: (_) => sl<IssuesBloc>(),
+      child: const IssuesListPage(),
+    ),
+    const MorePage(),
+    const DashboardPage(),
   ];
 }

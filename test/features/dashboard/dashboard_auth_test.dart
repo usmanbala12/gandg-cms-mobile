@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:field_link/core/db/app_database.dart';
+import 'package:field_link/core/domain/repository_result.dart';
 import 'package:field_link/features/dashboard/data/repositories/dashboard_repository_impl.dart';
 import 'package:field_link/features/dashboard/domain/analytics_entity.dart';
 import 'package:field_link/features/dashboard/presentation/bloc/dashboard_cubit.dart';
@@ -57,10 +58,10 @@ void main() {
   test(
     'init attempts remote fetch when cache is empty and handles auth error',
     () async {
-      // Arrange: Cache returns empty list
+      // Arrange: Cache returns empty list wrapped in RepositoryResult
       when(
         () => repository.getProjects(forceRemote: false),
-      ).thenAnswer((_) async => []);
+      ).thenAnswer((_) async => RepositoryResult.local([]));
 
       // Arrange: Remote fetch throws Auth Exception
       when(() => repository.getProjects(forceRemote: true)).thenThrow(
@@ -82,10 +83,10 @@ void main() {
   test(
     'init attempts remote fetch when cache is empty and handles success',
     () async {
-      // Arrange: Cache returns empty list
+      // Arrange: Cache returns empty list wrapped in RepositoryResult
       when(
         () => repository.getProjects(forceRemote: false),
-      ).thenAnswer((_) async => []);
+      ).thenAnswer((_) async => RepositoryResult.local([]));
 
       final project = Project(
         id: 'p1',
@@ -95,17 +96,19 @@ void main() {
         updatedAt: 0,
       );
 
-      // Arrange: Remote fetch returns projects
+      // Arrange: Remote fetch returns projects wrapped in RepositoryResult
       when(
         () => repository.getProjects(forceRemote: true),
-      ).thenAnswer((_) async => [project]);
+      ).thenAnswer((_) async => RepositoryResult.remote([project]));
 
       when(
         () => repository.getProjectAnalytics(
           any(),
           forceRefresh: any(named: 'forceRefresh'),
         ),
-      ).thenAnswer((_) async => AnalyticsEntity.empty('p1'));
+      ).thenAnswer(
+        (_) async => RepositoryResult.remote(AnalyticsEntity.empty('p1')),
+      );
 
       // Act
       await cubit.init();

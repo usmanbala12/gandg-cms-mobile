@@ -31,6 +31,10 @@ import 'tables/issue_history.dart';
 import 'tables/issue_media.dart';
 import 'daos/issue_history_dao.dart';
 import 'daos/issue_media_dao.dart';
+import 'tables/requests.dart';
+import 'tables/notifications.dart';
+import 'daos/request_dao.dart';
+import 'daos/notification_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -48,6 +52,8 @@ part 'app_database.g.dart';
     SyncConflicts,
     Meta,
     FormTemplates,
+    Requests,
+    Notifications,
   ],
   daos: [
     ProjectDao,
@@ -61,6 +67,8 @@ part 'app_database.g.dart';
     MediaDao,
     ConflictDao,
     MetaDao,
+    RequestDao,
+    NotificationDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -71,37 +79,47 @@ class AppDatabase extends _$AppDatabase {
 
   // Increment this when making schema changes and add proper migrations.
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onCreate: (m) async {
-      await m.createAll();
-    },
-    onUpgrade: (m, from, to) async {
-      // Add migration steps when schemaVersion increases.
-      // Example template:
-      if (from < 2) {
-        await m.createTable(formTemplates);
-      }
-      if (from < 3) {
-        await m.createTable(issueComments);
-      }
-      if (from < 4) {
-        await m.createTable(issueHistory);
-        await m.createTable(issueMedia);
-        await m.addColumn(issues, issues.deletedAt);
-        await m.addColumn(issues, issues.syncStatus);
-        await m.addColumn(issueComments, issueComments.updatedAt);
-        await m.addColumn(issueComments, issueComments.serverUpdatedAt);
-        await m.addColumn(issueComments, issueComments.deletedAt);
-      }
-    },
-    beforeOpen: (details) async {
-      await customStatement('PRAGMA foreign_keys = ON');
-      await _ensureIndexes();
-    },
-  );
+        onCreate: (m) async {
+          await m.createAll();
+        },
+        onUpgrade: (m, from, to) async {
+          // Add migration steps when schemaVersion increases.
+          // Example template:
+          if (from < 2) {
+            await m.createTable(formTemplates);
+          }
+          if (from < 3) {
+            await m.createTable(issueComments);
+          }
+          if (from < 4) {
+            await m.createTable(issueHistory);
+            await m.createTable(issueMedia);
+            await m.addColumn(issues, issues.deletedAt);
+            await m.addColumn(issues, issues.syncStatus);
+            await m.addColumn(issueComments, issueComments.updatedAt);
+            await m.addColumn(issueComments, issueComments.serverUpdatedAt);
+            await m.addColumn(issueComments, issueComments.deletedAt);
+          }
+          if (from < 5) {
+            await m.createTable(requests);
+            await m.createTable(notifications);
+          }
+          if (from < 6) {
+            await m.addColumn(
+                requests, requests.shortSummary as GeneratedColumn);
+            await m.addColumn(requests, requests.location as GeneratedColumn);
+            await m.addColumn(requests, requests.dueDate as GeneratedColumn);
+          }
+        },
+        beforeOpen: (details) async {
+          await customStatement('PRAGMA foreign_keys = ON');
+          await _ensureIndexes();
+        },
+      );
 
   Future<void> closeDb() async {
     await close();
@@ -122,6 +140,11 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS idx_media_upload_status ON media_files(upload_status);',
       'CREATE INDEX IF NOT EXISTS idx_media_parent_lookup ON media_files(parent_type, parent_id);',
       'CREATE INDEX IF NOT EXISTS idx_conflicts_resolved ON sync_conflicts(resolved);',
+      'CREATE INDEX IF NOT EXISTS idx_requests_project_id ON requests(project_id);',
+      'CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status);',
+      'CREATE INDEX IF NOT EXISTS idx_requests_server_id ON requests(server_id);',
+      'CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);',
+      'CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);',
     ];
 
     for (final statement in statements) {

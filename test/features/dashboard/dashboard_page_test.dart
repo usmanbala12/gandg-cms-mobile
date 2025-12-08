@@ -1,23 +1,32 @@
 import 'package:field_link/core/db/app_database.dart';
 import 'package:field_link/features/dashboard/domain/analytics_entity.dart';
+import 'package:field_link/features/authentication/domain/entities/user.dart';
 import 'package:field_link/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:field_link/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
+import 'package:field_link/features/authentication/presentation/bloc/auth/auth_bloc.dart';
+import 'package:field_link/features/authentication/presentation/bloc/auth/auth_state.dart';
+
 class _MockDashboardCubit extends Mock implements DashboardCubit {}
+
+class _MockAuthBloc extends Mock implements AuthBloc {}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late _MockDashboardCubit cubit;
+  late _MockAuthBloc authBloc;
   late DashboardState state;
   late Project project;
   late AnalyticsEntity analytics;
 
   setUp(() {
     cubit = _MockDashboardCubit();
+    authBloc = _MockAuthBloc();
     final now = DateTime.now().millisecondsSinceEpoch;
     project = Project(
       id: 'project-1',
@@ -71,12 +80,28 @@ void main() {
     ).thenAnswer((_) => Stream<DashboardState>.value(state));
     when(() => cubit.refresh()).thenAnswer((_) async {});
     when(cubit.close).thenAnswer((_) async {});
+
+    final user = User(id: '1', email: 'test@test.com', name: 'Test User');
+    when(() => authBloc.state).thenReturn(AuthState.authenticated(user));
+    when(
+      () => authBloc.stream,
+    ).thenAnswer((_) => Stream.value(AuthState.authenticated(user)));
   });
 
   testWidgets('renders analytics cards, charts, and activity list', (
     tester,
   ) async {
-    await tester.pumpWidget(MaterialApp(home: DashboardPage(cubit: cubit)));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider<DashboardCubit>.value(value: cubit),
+            BlocProvider<AuthBloc>.value(value: authBloc),
+          ],
+          child: const DashboardPage(),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Reports'), findsOneWidget);

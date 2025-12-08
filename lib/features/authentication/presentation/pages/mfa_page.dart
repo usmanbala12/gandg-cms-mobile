@@ -31,11 +31,11 @@ class _MFAPageState extends State<MFAPage> {
 
   void _handleVerify(BuildContext context) {
     context.read<AuthBloc>().add(
-      MFARequested(
-        code: _codeController.text.trim(),
-        mfaToken: widget.mfaToken,
-      ),
-    );
+          MFARequested(
+            code: _codeController.text.trim(),
+            mfaToken: widget.mfaToken,
+          ),
+        );
   }
 
   @override
@@ -52,10 +52,7 @@ class _MFAPageState extends State<MFAPage> {
         child: BlocListener<AuthBloc, AuthState>(
           listenWhen: (prev, curr) => prev.status != curr.status,
           listener: (context, state) {
-            if (state.status == AuthStatus.authenticated) {
-              Get.offNamed('/home');
-            } else if (state.status == AuthStatus.error &&
-                state.message != null) {
+            if (state.status == AuthStatus.error && state.message != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.message!),
@@ -155,9 +152,8 @@ class _MFAPageState extends State<MFAPage> {
 
                           // Verify Button
                           ElevatedButton(
-                            onPressed: isLoading
-                                ? null
-                                : () => _handleVerify(context),
+                            onPressed:
+                                isLoading ? null : () => _handleVerify(context),
                             style: ElevatedButton.styleFrom(
                               minimumSize: const Size.fromHeight(48),
                               shape: RoundedRectangleBorder(

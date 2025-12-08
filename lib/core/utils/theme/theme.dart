@@ -29,9 +29,13 @@ class TAppTheme {
     inputDecorationTheme: TTextFormFieldTheme.lightTextFieldTheme,
     colorScheme: const ColorScheme.light(
       primary: Colors.black,
+      onPrimary: Colors.white,
       secondary: Colors.black87,
+      onSecondary: Colors.white,
       surface: Colors.white,
+      onSurface: Colors.black,
       error: Colors.red,
+      onError: Colors.white,
     ),
   );
 
@@ -53,9 +57,13 @@ class TAppTheme {
     inputDecorationTheme: TTextFormFieldTheme.darkTextFieldTheme,
     colorScheme: const ColorScheme.dark(
       primary: Colors.white,
+      onPrimary: Colors.black,
       secondary: Colors.white70,
+      onSecondary: Colors.black,
       surface: Colors.black,
+      onSurface: Colors.white,
       error: Colors.red,
+      onError: Colors.black,
     ),
   );
 }

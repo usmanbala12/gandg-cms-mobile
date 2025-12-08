@@ -50,7 +50,7 @@ class ReportRepositoryImpl implements ReportRepository {
 
   @override
   Future<RepositoryResult<List<ReportEntity>>> getReports({
-    String? projectId,
+    required String projectId,
     bool forceRemote = false,
   }) async {
     // Get cached reports
@@ -58,9 +58,7 @@ class ReportRepositoryImpl implements ReportRepository {
     final cached = rows.map((row) => ReportModel.fromDb(row)).toList();
 
     // Get last sync timestamp
-    final lastSyncKey = projectId != null
-        ? 'reports_last_synced_$projectId'
-        : 'reports_last_synced';
+    final lastSyncKey = 'reports_last_synced_$projectId';
     final lastSyncStr = await metaDao.getValue(lastSyncKey);
     final lastSyncedAt = lastSyncStr != null ? int.tryParse(lastSyncStr) : null;
 
@@ -81,14 +79,14 @@ class ReportRepositoryImpl implements ReportRepository {
     }
 
     // If projectId is null, can't fetch remote
-    if (projectId == null) {
-      logger.w('No projectId provided, returning cached reports');
-      return RepositoryResult.local(
-        cached,
-        message: 'No project selected.',
-        lastSyncedAt: lastSyncedAt,
-      );
-    }
+    // if (projectId == null) {
+    //   logger.w('No projectId provided, returning cached reports');
+    //   return RepositoryResult.local(
+    //     cached,
+    //     message: 'No project selected.',
+    //     lastSyncedAt: lastSyncedAt,
+    //   );
+    // }
 
     // Online - fetch from remote
     logger.i('Fetching reports from remote API for project $projectId');
@@ -99,6 +97,10 @@ class ReportRepositoryImpl implements ReportRepository {
       final nowMs = DateTime.now().millisecondsSinceEpoch;
       await db.transaction(() async {
         for (final data in remoteData) {
+          // Ensure projectId is present
+          if (data['project_id'] == null) {
+            data['project_id'] = projectId;
+          }
           final model = ReportModel.fromJson(data);
           await reportDao.insertReport(model.toCompanion());
         }

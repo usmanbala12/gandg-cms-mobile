@@ -9,7 +9,9 @@ import 'package:field_link/features/reports/domain/entities/report_entity.dart';
 import 'package:field_link/core/db/app_database.dart';
 import 'package:field_link/core/db/daos/report_dao.dart';
 import 'package:field_link/core/db/daos/media_dao.dart';
+import 'package:field_link/core/db/daos/meta_dao.dart';
 import 'package:field_link/core/db/daos/sync_queue_dao.dart';
+import 'package:field_link/core/network/network_info.dart';
 
 class MockAppDatabase extends Mock implements AppDatabase {}
 
@@ -17,10 +19,14 @@ class MockReportDao extends Mock implements ReportDao {}
 
 class MockMediaDao extends Mock implements MediaDao {}
 
+class MockMetaDao extends Mock implements MetaDao {}
+
 class MockSyncQueueDao extends Mock implements SyncQueueDao {}
 
 class MockReportRemoteDataSource extends Mock
     implements ReportRemoteDataSource {}
+
+class MockNetworkInfo extends Mock implements NetworkInfo {}
 
 class MockLogger extends Mock implements Logger {}
 
@@ -29,24 +35,33 @@ void main() {
   late MockAppDatabase mockDb;
   late MockReportDao mockReportDao;
   late MockMediaDao mockMediaDao;
+  late MockMetaDao mockMetaDao;
   late MockSyncQueueDao mockSyncQueueDao;
   late MockReportRemoteDataSource mockRemoteDataSource;
+  late MockNetworkInfo mockNetworkInfo;
   late MockLogger mockLogger;
 
   setUp(() {
     mockDb = MockAppDatabase();
     mockReportDao = MockReportDao();
     mockMediaDao = MockMediaDao();
+    mockMetaDao = MockMetaDao();
     mockSyncQueueDao = MockSyncQueueDao();
     mockRemoteDataSource = MockReportRemoteDataSource();
+    mockNetworkInfo = MockNetworkInfo();
     mockLogger = MockLogger();
+
+    // Mock networkInfo to return true (online) by default
+    when(() => mockNetworkInfo.isOnline()).thenAnswer((_) async => true);
 
     repository = ReportRepositoryImpl(
       db: mockDb,
       reportDao: mockReportDao,
       mediaDao: mockMediaDao,
+      metaDao: mockMetaDao,
       syncQueueDao: mockSyncQueueDao,
       remoteDataSource: mockRemoteDataSource,
+      networkInfo: mockNetworkInfo,
       logger: mockLogger,
     );
 
@@ -67,8 +82,9 @@ void main() {
     test('should insert report and enqueue sync item in transaction', () async {
       // Arrange
       when(() => mockDb.transaction(any())).thenAnswer((invocation) async {
-        await invocation.positionalArguments[0]();
-        return null;
+        final action =
+            invocation.positionalArguments[0] as Future<void> Function();
+        return await action();
       });
       when(() => mockReportDao.insertReport(any())).thenAnswer((_) async {});
       when(() => mockSyncQueueDao.enqueue(any())).thenAnswer((_) async {});
@@ -77,7 +93,7 @@ void main() {
       await repository.createReport(tReport);
 
       // Assert
-      verify(() => mockDb.transaction(any())).called(1);
+      verify(() => mockDb.transaction<void>(any())).called(1);
       verify(() => mockReportDao.insertReport(any())).called(1);
       verify(() => mockSyncQueueDao.enqueue(any())).called(1);
     });
@@ -104,13 +120,14 @@ void main() {
           offset: any(named: 'offset'),
         ),
       ).thenAnswer((_) async => [tReportRow]);
+      when(() => mockMetaDao.getValue(any())).thenAnswer((_) async => null);
 
       // Act
       final result = await repository.getReports(projectId: 'proj1');
 
       // Assert
-      expect(result.length, 1);
-      expect(result.first.id, '1');
+      expect(result.data.length, 1);
+      expect(result.data.first.id, '1');
       verify(
         () => mockReportDao.getReports(
           projectId: any(named: 'projectId'),
@@ -140,11 +157,14 @@ void main() {
             },
           ],
         );
+        when(() => mockMetaDao.getValue(any())).thenAnswer((_) async => null);
         when(() => mockDb.transaction(any())).thenAnswer((invocation) async {
-          await invocation.positionalArguments[0]();
-          return null;
+          final action = invocation.positionalArguments[0] as Function;
+          await action();
+          return Future.value();
         });
         when(() => mockReportDao.insertReport(any())).thenAnswer((_) async {});
+        when(() => mockMetaDao.setValue(any(), any())).thenAnswer((_) async {});
         when(
           () => mockReportDao.getReports(
             projectId: 'proj1',
@@ -164,8 +184,8 @@ void main() {
           () => mockRemoteDataSource.fetchProjectReports('proj1'),
         ).called(1);
         verify(() => mockReportDao.insertReport(any())).called(1);
-        expect(result.length, 1);
-        expect(result.first.id, '1');
+        expect(result.data.length, 1);
+        expect(result.data.first.id, '1');
       },
     );
   });

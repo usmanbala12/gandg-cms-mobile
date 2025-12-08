@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:field_link/core/di/injection_container.dart';
 import 'package:field_link/features/dashboard/domain/analytics_entity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -16,21 +15,11 @@ import 'package:field_link/features/authentication/presentation/bloc/auth/auth_b
 import 'package:field_link/features/authentication/presentation/bloc/auth/auth_event.dart';
 
 class DashboardPage extends StatelessWidget {
-  const DashboardPage({super.key, DashboardCubit? cubit}) : _cubit = cubit;
-
-  final DashboardCubit? _cubit;
+  const DashboardPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final view = const _DashboardView();
-    if (_cubit != null) {
-      return BlocProvider<DashboardCubit>.value(value: _cubit, child: view);
-    }
-
-    return BlocProvider<DashboardCubit>(
-      create: (_) => sl<DashboardCubit>()..init(),
-      child: view,
-    );
+    return const _DashboardView();
   }
 }
 

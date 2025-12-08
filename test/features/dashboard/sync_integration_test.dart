@@ -7,6 +7,7 @@ import 'package:field_link/core/db/daos/meta_dao.dart';
 import 'package:field_link/core/db/daos/project_dao.dart';
 import 'package:field_link/core/db/db_utils.dart';
 import 'package:field_link/core/network/api_client.dart';
+import 'package:field_link/core/network/network_info.dart';
 import 'package:field_link/core/services/token_storage_service.dart';
 import 'package:field_link/core/sync/sync_manager.dart';
 import 'package:field_link/features/dashboard/data/repositories/dashboard_repository_impl.dart';
@@ -19,6 +20,8 @@ class _MockSyncManager extends Mock implements SyncManager {}
 
 class _MockTokenStorageService extends Mock implements TokenStorageService {}
 
+class _MockNetworkInfo extends Mock implements NetworkInfo {}
+
 void main() {
   late AppDatabase db;
   late ProjectDao projectDao;
@@ -27,6 +30,7 @@ void main() {
   late _MockApiClient apiClient;
   late _MockSyncManager syncManager;
   late _MockTokenStorageService tokenStorageService;
+  late _MockNetworkInfo networkInfo;
   late DashboardRepositoryImpl repository;
   const projectId = 'project-1';
 
@@ -38,11 +42,15 @@ void main() {
     apiClient = _MockApiClient();
     syncManager = _MockSyncManager();
     tokenStorageService = _MockTokenStorageService();
+    networkInfo = _MockNetworkInfo();
 
     // Mock the tokenStorageService to return true for isAuthenticated
     when(
       () => tokenStorageService.isAuthenticated(),
     ).thenAnswer((_) async => true);
+
+    // Mock networkInfo to return true (online)
+    when(() => networkInfo.isOnline()).thenAnswer((_) async => true);
 
     repository = DashboardRepositoryImpl(
       projectDao: projectDao,
@@ -51,6 +59,7 @@ void main() {
       apiClient: apiClient,
       syncManager: syncManager,
       tokenStorageService: tokenStorageService,
+      networkInfo: networkInfo,
     );
 
     final nowMs = now();
@@ -108,7 +117,7 @@ void main() {
       projectId,
       forceRefresh: true,
     );
-    expect(result.reportsCount, 10);
+    expect(result.data.reportsCount, 10);
 
     final emitted = await repository
         .watchAnalytics(projectId)
@@ -130,7 +139,7 @@ void main() {
     await repository.getProjectAnalytics(projectId, forceRefresh: true);
 
     final cached = await repository.getProjectAnalytics(projectId);
-    expect(cached.reportsCount, 3);
+    expect(cached.data.reportsCount, 3);
 
     verify(() => apiClient.fetchProjectAnalytics(projectId)).called(1);
   });
@@ -165,7 +174,8 @@ void main() {
       projectId,
       forceRefresh: true,
     );
-    expect(result.reportsCount, 5);
-    expect(result.isStale, true);
+    expect(result.data.reportsCount, 5);
+    expect(result.data.isStale, true);
+    expect(result.isLocal, true);
   });
 }

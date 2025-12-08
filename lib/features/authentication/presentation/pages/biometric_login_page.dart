@@ -40,10 +40,7 @@ class _BiometricLoginPageState extends State<BiometricLoginPage> {
         child: BlocListener<AuthBloc, AuthState>(
           listenWhen: (prev, curr) => prev.status != curr.status,
           listener: (context, state) {
-            if (state.status == AuthStatus.authenticated) {
-              Get.offNamed('/home');
-            } else if (state.status == AuthStatus.error &&
-                state.message != null) {
+            if (state.status == AuthStatus.error && state.message != null) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(state.message!),
@@ -132,9 +129,8 @@ class _BiometricLoginPageState extends State<BiometricLoginPage> {
 
                           // Skip Button
                           OutlinedButton(
-                            onPressed: isLoading
-                                ? null
-                                : () => _handleSkip(context),
+                            onPressed:
+                                isLoading ? null : () => _handleSkip(context),
                             style: OutlinedButton.styleFrom(
                               minimumSize: const Size.fromHeight(48),
                               shape: RoundedRectangleBorder(

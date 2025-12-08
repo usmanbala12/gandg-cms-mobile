@@ -4,7 +4,7 @@ import '../../../features/reports/domain/entities/report_entity.dart';
 abstract class ReportRepository {
   Stream<List<ReportEntity>> watchReports({String? projectId});
   Future<RepositoryResult<List<ReportEntity>>> getReports({
-    String? projectId,
+    required String projectId,
     bool forceRemote = false,
   });
   Future<void> createReport(ReportEntity report);

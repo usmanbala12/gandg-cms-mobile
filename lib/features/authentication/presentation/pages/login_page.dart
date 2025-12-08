@@ -34,11 +34,11 @@ class _LoginPageState extends State<LoginPage> {
 
   void _handleLogin(BuildContext context) {
     context.read<AuthBloc>().add(
-      LoginRequested(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-      ),
-    );
+          LoginRequested(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+          ),
+        );
   }
 
   void _handleBiometric(BuildContext context) {
@@ -57,9 +57,6 @@ class _LoginPageState extends State<LoginPage> {
           listener: (context, state) {
             if (state.status == AuthStatus.mfaRequired) {
               Get.to(() => MFAPage(mfaToken: state.mfaToken ?? ''));
-            } else if (state.status == AuthStatus.authenticated) {
-              // Navigate to home
-              Get.offNamed('/home');
             } else if (state.status == AuthStatus.error &&
                 state.message != null) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -142,9 +139,8 @@ class _LoginPageState extends State<LoginPage> {
 
                           // Sign In Button
                           ElevatedButton(
-                            onPressed: isLoading
-                                ? null
-                                : () => _handleLogin(context),
+                            onPressed:
+                                isLoading ? null : () => _handleLogin(context),
                             style: ElevatedButton.styleFrom(
                               minimumSize: const Size.fromHeight(48),
                               shape: RoundedRectangleBorder(

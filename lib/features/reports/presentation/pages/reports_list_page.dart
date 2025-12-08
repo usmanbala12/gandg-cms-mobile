@@ -1,40 +1,42 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/db/repositories/report_repository.dart';
+import '../../../../features/dashboard/presentation/bloc/dashboard_cubit.dart';
+import '../../../../features/dashboard/presentation/widgets/sync_status_widget.dart';
 import '../../domain/entities/report_entity.dart';
+import '../cubit/reports_cubit.dart';
+import '../cubit/reports_state.dart';
 import 'report_create_page.dart';
 import 'report_detail_page.dart';
 
-class ReportsListPage extends StatefulWidget {
-  final String? projectId;
-
-  const ReportsListPage({super.key, this.projectId});
+class ReportsListPage extends StatelessWidget {
+  const ReportsListPage({super.key});
 
   @override
-  State<ReportsListPage> createState() => _ReportsListPageState();
-}
-
-class _ReportsListPageState extends State<ReportsListPage> {
-  late final ReportRepository _repository;
-  late Stream<List<ReportEntity>> _reportsStream;
-  String _searchQuery = '';
-  String? _statusFilter;
-
-  @override
-  void initState() {
-    super.initState();
-    _repository = GetIt.instance<ReportRepository>();
-    _reportsStream = _repository.watchReports(projectId: widget.projectId);
-  }
-
-  Future<void> _refresh() async {
-    await _repository.getReports(
-      projectId: widget.projectId,
-      forceRemote: widget.projectId != null,
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => ReportsCubit(
+        repository: GetIt.instance<ReportRepository>(),
+        dashboardCubit: context.read<DashboardCubit>(),
+      ),
+      child: const _ReportsListView(),
     );
   }
+}
+
+class _ReportsListView extends StatefulWidget {
+  const _ReportsListView();
+
+  @override
+  State<_ReportsListView> createState() => _ReportsListViewState();
+}
+
+class _ReportsListViewState extends State<_ReportsListView> {
+  String _searchQuery = '';
+  String? _statusFilter;
 
   List<ReportEntity> _filterReports(List<ReportEntity> reports) {
     return reports.where((report) {
@@ -54,6 +56,11 @@ class _ReportsListPageState extends State<ReportsListPage> {
       appBar: AppBar(
         title: const Text('Reports'),
         actions: [
+          const SyncStatusWidget(),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () => context.read<ReportsCubit>().refresh(),
+          ),
           IconButton(
             icon: const Icon(Icons.filter_list),
             onPressed: _showFilterDialog,
@@ -78,65 +85,77 @@ class _ReportsListPageState extends State<ReportsListPage> {
             ),
           ),
           Expanded(
-            child: StreamBuilder<List<ReportEntity>>(
-              stream: _reportsStream,
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+            child: BlocBuilder<ReportsCubit, ReportsState>(
+              builder: (context, state) {
+                if (state is ReportsError) {
+                  return Center(child: Text('Error: ${state.message}'));
                 }
-                if (!snapshot.hasData) {
+                if (state is ReportsNoProjectSelected) {
+                  return const Center(
+                    child: Text('Please select a project to view reports'),
+                  );
+                }
+                if (state is ReportsLoading) {
                   return const Center(child: CircularProgressIndicator());
                 }
+                if (state is ReportsLoaded) {
+                  final reports = _filterReports(state.reports);
 
-                final reports = _filterReports(snapshot.data!);
+                  if (reports.isEmpty) {
+                    return const Center(child: Text('No reports found'));
+                  }
 
-                if (reports.isEmpty) {
-                  return const Center(child: Text('No reports found'));
-                }
-
-                return RefreshIndicator(
-                  onRefresh: _refresh,
-                  child: ListView.builder(
-                    itemCount: reports.length,
-                    itemBuilder: (context, index) {
-                      final report = reports[index];
-                      return ListTile(
-                        title: Text(
-                          'Report ${DateFormat.yMMMd().format(DateTime.fromMillisecondsSinceEpoch(report.reportDate))}',
-                        ),
-                        subtitle: Text(
-                          'Status: ${report.status}\nID: ${report.id.substring(0, 8)}...',
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => ReportDetailPage(
-                                projectId: report.projectId,
-                                reportId: report.id,
+                  return RefreshIndicator(
+                    onRefresh: () => context.read<ReportsCubit>().refresh(),
+                    child: ListView.builder(
+                      itemCount: reports.length,
+                      itemBuilder: (context, index) {
+                        final report = reports[index];
+                        return ListTile(
+                          title: Text(
+                            'Report ${DateFormat.yMMMd().format(DateTime.fromMillisecondsSinceEpoch(report.reportDate))}',
+                          ),
+                          subtitle: Text(
+                            'Status: ${report.status}\nID: ${report.id.substring(0, 8)}...',
+                          ),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => ReportDetailPage(
+                                  projectId: report.projectId,
+                                  reportId: report.id,
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-                );
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
               },
             ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ReportCreatePage()),
+      floatingActionButton: BlocBuilder<ReportsCubit, ReportsState>(
+        builder: (context, state) {
+          if (state is ReportsNoProjectSelected) return const SizedBox.shrink();
+          return FloatingActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ReportCreatePage(),
+                ),
+              );
+            },
+            child: const Icon(Icons.add),
           );
         },
-        child: const Icon(Icons.add),
       ),
     );
   }
