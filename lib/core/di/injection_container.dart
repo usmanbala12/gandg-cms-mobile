@@ -20,6 +20,7 @@ import '../db/daos/media_dao.dart';
 import '../db/daos/conflict_dao.dart';
 import '../db/daos/meta_dao.dart';
 import '../db/daos/request_dao.dart';
+import '../db/daos/user_dao.dart';
 import '../db/repositories/report_repository.dart';
 import '../db/repositories/media_repository.dart';
 import '../sync/sync_manager.dart';
@@ -53,6 +54,10 @@ import '../../features/notifications/data/repositories/notification_repository_i
 import '../../features/notifications/domain/repositories/notification_repository.dart';
 import '../../features/notifications/presentation/cubit/notifications_cubit.dart';
 import '../../features/settings/presentation/cubit/settings_cubit.dart';
+import '../../features/profile/data/datasources/profile_remote_datasource.dart';
+import '../../features/profile/data/repositories/profile_repository_impl.dart';
+import '../../features/profile/domain/repositories/profile_repository.dart';
+import '../../features/profile/presentation/cubit/profile_cubit.dart';
 
 final sl = GetIt.instance;
 
@@ -97,6 +102,7 @@ Future<void> initDependencies({required String baseUrl}) async {
   sl.registerLazySingleton<ConflictDao>(() => ConflictDao(sl<AppDatabase>()));
   sl.registerLazySingleton<MetaDao>(() => MetaDao(sl<AppDatabase>()));
   sl.registerLazySingleton<RequestDao>(() => RequestDao(sl<AppDatabase>()));
+  sl.registerLazySingleton<UserDao>(() => UserDao(sl<AppDatabase>()));
 
   // Network
   sl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl());
@@ -180,7 +186,11 @@ Future<void> initDependencies({required String baseUrl}) async {
 
   // Repositories
   sl.registerLazySingleton<AuthRepository>(
-    () => AuthRepositoryImpl(remoteDataSource: sl(), tokenStorageService: sl()),
+    () => AuthRepositoryImpl(
+      remoteDataSource: sl(),
+      tokenStorageService: sl(),
+      userDao: sl(),
+    ),
   );
 
   // Use Cases
@@ -249,6 +259,33 @@ Future<void> initDependencies({required String baseUrl}) async {
         syncManager: sl(),
         sharedPreferences: sl(),
       ));
+
+  // Features - Profile
+  sl.registerLazySingleton<ProfileRemoteDataSource>(
+    () => ProfileRemoteDataSource(dio: sl()),
+  );
+
+  sl.registerLazySingleton<ProfileRepository>(
+    () => ProfileRepositoryImpl(
+      remoteDataSource: sl(),
+      networkInfo: sl(),
+      sharedPreferences: sl(),
+      syncManager: sl(),
+      syncQueueDao: sl(),
+      conflictDao: sl(),
+      metaDao: sl(),
+      mediaDao: sl(),
+      userDao: sl(),
+      db: sl(),
+    ),
+  );
+
+  sl.registerFactory(
+    () => ProfileCubit(
+      profileRepository: sl(),
+      authRepository: sl(),
+    ),
+  );
 }
 
 /// Backward-compatible init function that uses default base URL.

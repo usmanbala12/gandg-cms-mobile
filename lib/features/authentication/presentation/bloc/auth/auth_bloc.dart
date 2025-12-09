@@ -90,7 +90,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         // TODO: Fetch user data from /me endpoint
         emit(
           AuthState.authenticated(
-            const User(id: 'user_id', email: 'user@example.com', name: 'User'),
+            const User(
+                id: 'user_id', email: 'user@example.com', fullName: 'User'),
           ),
         );
       },
@@ -191,7 +192,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
               const User(
                 id: 'user_id',
                 email: 'user@example.com',
-                name: 'User',
+                fullName: 'User',
               ),
             ),
           );
@@ -212,7 +213,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await tokenStorageService.setUserEmail(event.email);
       emit(
         AuthState.authenticated(
-          User(id: 'user_id', email: event.email, name: 'User'),
+          User(id: 'user_id', email: event.email, fullName: 'User'),
         ),
       );
     } catch (e) {
@@ -229,7 +230,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await tokenStorageService.setBiometricEnabled(false);
       emit(
         AuthState.authenticated(
-          const User(id: 'user_id', email: 'user@example.com', name: 'User'),
+          const User(
+              id: 'user_id', email: 'user@example.com', fullName: 'User'),
         ),
       );
     } catch (e) {

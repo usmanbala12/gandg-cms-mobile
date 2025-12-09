@@ -123,16 +123,16 @@ class _SettingsView extends StatelessWidget {
               },
             ),
             const Divider(),
-            ListTile(
-              title: const Text(
-                'Sign Out',
-                style: TextStyle(color: Colors.red),
-              ),
-              leading: const Icon(Icons.logout, color: Colors.red),
-              onTap: () {
-                // TODO: Trigger logout
-              },
-            ),
+            // ListTile(
+            //   title: const Text(
+            //     'Sign Out',
+            //     style: TextStyle(color: Colors.red),
+            //   ),
+            //   leading: const Icon(Icons.logout, color: Colors.red),
+            //   onTap: () {
+            //     // TODO: Trigger logout
+            //   },
+            // ),
           ],
         ),
       ),

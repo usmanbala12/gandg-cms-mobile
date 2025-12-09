@@ -33,8 +33,10 @@ import 'daos/issue_history_dao.dart';
 import 'daos/issue_media_dao.dart';
 import 'tables/requests.dart';
 import 'tables/notifications.dart';
+import 'tables/users.dart';
 import 'daos/request_dao.dart';
 import 'daos/notification_dao.dart';
+import 'daos/user_dao.dart';
 
 part 'app_database.g.dart';
 
@@ -54,6 +56,7 @@ part 'app_database.g.dart';
     FormTemplates,
     Requests,
     Notifications,
+    Users,
   ],
   daos: [
     ProjectDao,
@@ -69,6 +72,7 @@ part 'app_database.g.dart';
     MetaDao,
     RequestDao,
     NotificationDao,
+    UserDao,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -79,7 +83,7 @@ class AppDatabase extends _$AppDatabase {
 
   // Increment this when making schema changes and add proper migrations.
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -109,10 +113,27 @@ class AppDatabase extends _$AppDatabase {
             await m.createTable(notifications);
           }
           if (from < 6) {
-            await m.addColumn(
-                requests, requests.shortSummary as GeneratedColumn);
-            await m.addColumn(requests, requests.location as GeneratedColumn);
-            await m.addColumn(requests, requests.dueDate as GeneratedColumn);
+            // These columns might already exist if the table was created at v5+
+            // Use try-catch to gracefully handle duplicate column errors
+            try {
+              await m.addColumn(
+                  requests, requests.shortSummary as GeneratedColumn);
+            } catch (_) {
+              // Column already exists, ignore
+            }
+            try {
+              await m.addColumn(requests, requests.location as GeneratedColumn);
+            } catch (_) {
+              // Column already exists, ignore
+            }
+            try {
+              await m.addColumn(requests, requests.dueDate as GeneratedColumn);
+            } catch (_) {
+              // Column already exists, ignore
+            }
+          }
+          if (from < 7) {
+            await m.createTable(users);
           }
         },
         beforeOpen: (details) async {
@@ -145,6 +166,7 @@ class AppDatabase extends _$AppDatabase {
       'CREATE INDEX IF NOT EXISTS idx_requests_server_id ON requests(server_id);',
       'CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);',
       'CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);',
+      'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);',
     ];
 
     for (final statement in statements) {

@@ -81,7 +81,7 @@ void main() {
     when(() => cubit.refresh()).thenAnswer((_) async {});
     when(cubit.close).thenAnswer((_) async {});
 
-    final user = User(id: '1', email: 'test@test.com', name: 'Test User');
+    final user = User(id: '1', email: 'test@test.com', fullName: 'Test User');
     when(() => authBloc.state).thenReturn(AuthState.authenticated(user));
     when(
       () => authBloc.stream,

@@ -121,10 +121,16 @@ class AuthInterceptor extends Interceptor {
 
         if (response.statusCode == 200) {
           final root = response.data as Map<String, dynamic>;
-          final data = root['data'] as Map<String, dynamic>? ?? root;
+          // Handle potential data wrapper
+          final data = root.containsKey('data')
+              ? (root['data'] as Map<String, dynamic>? ?? root)
+              : root;
 
-          final newAccessToken = data['accessToken'] as String?;
-          final newRefreshToken = data['refreshToken'] as String?;
+          // Check for both snake_case (standard) and camelCase (potential legacy)
+          final newAccessToken =
+              data['access_token'] as String? ?? data['accessToken'] as String?;
+          final newRefreshToken = data['refresh_token'] as String? ??
+              data['refreshToken'] as String?;
 
           if (newAccessToken != null && newRefreshToken != null) {
             _logger.i(
@@ -159,6 +165,7 @@ class AuthInterceptor extends Interceptor {
             );
           } else {
             _logger.e('❌ [AuthInterceptor] Refresh response missing tokens.');
+            _logger.e('   Response keys: ${data.keys.toList()}');
           }
         } else {
           _logger.e(

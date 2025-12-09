@@ -7262,6 +7262,394 @@ class NotificationsCompanion extends UpdateCompanion<Notification> {
   }
 }
 
+class $UsersTable extends Users with TableInfo<$UsersTable, UserTableData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UsersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _fullNameMeta =
+      const VerificationMeta('fullName');
+  @override
+  late final GeneratedColumn<String> fullName = GeneratedColumn<String>(
+      'full_name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _emailMeta = const VerificationMeta('email');
+  @override
+  late final GeneratedColumn<String> email = GeneratedColumn<String>(
+      'email', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _roleMeta = const VerificationMeta('role');
+  @override
+  late final GeneratedColumn<String> role = GeneratedColumn<String>(
+      'role', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+      'status', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _mfaEnabledMeta =
+      const VerificationMeta('mfaEnabled');
+  @override
+  late final GeneratedColumn<bool> mfaEnabled = GeneratedColumn<bool>(
+      'mfa_enabled', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("mfa_enabled" IN (0, 1))'),
+      defaultValue: const Constant(false));
+  static const VerificationMeta _lastLoginAtMeta =
+      const VerificationMeta('lastLoginAt');
+  @override
+  late final GeneratedColumn<DateTime> lastLoginAt = GeneratedColumn<DateTime>(
+      'last_login_at', aliasedName, true,
+      type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, fullName, email, role, status, mfaEnabled, lastLoginAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'users';
+  @override
+  VerificationContext validateIntegrity(Insertable<UserTableData> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('full_name')) {
+      context.handle(_fullNameMeta,
+          fullName.isAcceptableOrUnknown(data['full_name']!, _fullNameMeta));
+    } else if (isInserting) {
+      context.missing(_fullNameMeta);
+    }
+    if (data.containsKey('email')) {
+      context.handle(
+          _emailMeta, email.isAcceptableOrUnknown(data['email']!, _emailMeta));
+    } else if (isInserting) {
+      context.missing(_emailMeta);
+    }
+    if (data.containsKey('role')) {
+      context.handle(
+          _roleMeta, role.isAcceptableOrUnknown(data['role']!, _roleMeta));
+    } else if (isInserting) {
+      context.missing(_roleMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(_statusMeta,
+          status.isAcceptableOrUnknown(data['status']!, _statusMeta));
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('mfa_enabled')) {
+      context.handle(
+          _mfaEnabledMeta,
+          mfaEnabled.isAcceptableOrUnknown(
+              data['mfa_enabled']!, _mfaEnabledMeta));
+    }
+    if (data.containsKey('last_login_at')) {
+      context.handle(
+          _lastLoginAtMeta,
+          lastLoginAt.isAcceptableOrUnknown(
+              data['last_login_at']!, _lastLoginAtMeta));
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  UserTableData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return UserTableData(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      fullName: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}full_name'])!,
+      email: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}email'])!,
+      role: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}role'])!,
+      status: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}status'])!,
+      mfaEnabled: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}mfa_enabled'])!,
+      lastLoginAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}last_login_at']),
+    );
+  }
+
+  @override
+  $UsersTable createAlias(String alias) {
+    return $UsersTable(attachedDatabase, alias);
+  }
+}
+
+class UserTableData extends DataClass implements Insertable<UserTableData> {
+  final String id;
+  final String fullName;
+  final String email;
+  final String role;
+  final String status;
+  final bool mfaEnabled;
+  final DateTime? lastLoginAt;
+  const UserTableData(
+      {required this.id,
+      required this.fullName,
+      required this.email,
+      required this.role,
+      required this.status,
+      required this.mfaEnabled,
+      this.lastLoginAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['full_name'] = Variable<String>(fullName);
+    map['email'] = Variable<String>(email);
+    map['role'] = Variable<String>(role);
+    map['status'] = Variable<String>(status);
+    map['mfa_enabled'] = Variable<bool>(mfaEnabled);
+    if (!nullToAbsent || lastLoginAt != null) {
+      map['last_login_at'] = Variable<DateTime>(lastLoginAt);
+    }
+    return map;
+  }
+
+  UsersCompanion toCompanion(bool nullToAbsent) {
+    return UsersCompanion(
+      id: Value(id),
+      fullName: Value(fullName),
+      email: Value(email),
+      role: Value(role),
+      status: Value(status),
+      mfaEnabled: Value(mfaEnabled),
+      lastLoginAt: lastLoginAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastLoginAt),
+    );
+  }
+
+  factory UserTableData.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return UserTableData(
+      id: serializer.fromJson<String>(json['id']),
+      fullName: serializer.fromJson<String>(json['fullName']),
+      email: serializer.fromJson<String>(json['email']),
+      role: serializer.fromJson<String>(json['role']),
+      status: serializer.fromJson<String>(json['status']),
+      mfaEnabled: serializer.fromJson<bool>(json['mfaEnabled']),
+      lastLoginAt: serializer.fromJson<DateTime?>(json['lastLoginAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'fullName': serializer.toJson<String>(fullName),
+      'email': serializer.toJson<String>(email),
+      'role': serializer.toJson<String>(role),
+      'status': serializer.toJson<String>(status),
+      'mfaEnabled': serializer.toJson<bool>(mfaEnabled),
+      'lastLoginAt': serializer.toJson<DateTime?>(lastLoginAt),
+    };
+  }
+
+  UserTableData copyWith(
+          {String? id,
+          String? fullName,
+          String? email,
+          String? role,
+          String? status,
+          bool? mfaEnabled,
+          Value<DateTime?> lastLoginAt = const Value.absent()}) =>
+      UserTableData(
+        id: id ?? this.id,
+        fullName: fullName ?? this.fullName,
+        email: email ?? this.email,
+        role: role ?? this.role,
+        status: status ?? this.status,
+        mfaEnabled: mfaEnabled ?? this.mfaEnabled,
+        lastLoginAt: lastLoginAt.present ? lastLoginAt.value : this.lastLoginAt,
+      );
+  UserTableData copyWithCompanion(UsersCompanion data) {
+    return UserTableData(
+      id: data.id.present ? data.id.value : this.id,
+      fullName: data.fullName.present ? data.fullName.value : this.fullName,
+      email: data.email.present ? data.email.value : this.email,
+      role: data.role.present ? data.role.value : this.role,
+      status: data.status.present ? data.status.value : this.status,
+      mfaEnabled:
+          data.mfaEnabled.present ? data.mfaEnabled.value : this.mfaEnabled,
+      lastLoginAt:
+          data.lastLoginAt.present ? data.lastLoginAt.value : this.lastLoginAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UserTableData(')
+          ..write('id: $id, ')
+          ..write('fullName: $fullName, ')
+          ..write('email: $email, ')
+          ..write('role: $role, ')
+          ..write('status: $status, ')
+          ..write('mfaEnabled: $mfaEnabled, ')
+          ..write('lastLoginAt: $lastLoginAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, fullName, email, role, status, mfaEnabled, lastLoginAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is UserTableData &&
+          other.id == this.id &&
+          other.fullName == this.fullName &&
+          other.email == this.email &&
+          other.role == this.role &&
+          other.status == this.status &&
+          other.mfaEnabled == this.mfaEnabled &&
+          other.lastLoginAt == this.lastLoginAt);
+}
+
+class UsersCompanion extends UpdateCompanion<UserTableData> {
+  final Value<String> id;
+  final Value<String> fullName;
+  final Value<String> email;
+  final Value<String> role;
+  final Value<String> status;
+  final Value<bool> mfaEnabled;
+  final Value<DateTime?> lastLoginAt;
+  final Value<int> rowid;
+  const UsersCompanion({
+    this.id = const Value.absent(),
+    this.fullName = const Value.absent(),
+    this.email = const Value.absent(),
+    this.role = const Value.absent(),
+    this.status = const Value.absent(),
+    this.mfaEnabled = const Value.absent(),
+    this.lastLoginAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  UsersCompanion.insert({
+    required String id,
+    required String fullName,
+    required String email,
+    required String role,
+    required String status,
+    this.mfaEnabled = const Value.absent(),
+    this.lastLoginAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        fullName = Value(fullName),
+        email = Value(email),
+        role = Value(role),
+        status = Value(status);
+  static Insertable<UserTableData> custom({
+    Expression<String>? id,
+    Expression<String>? fullName,
+    Expression<String>? email,
+    Expression<String>? role,
+    Expression<String>? status,
+    Expression<bool>? mfaEnabled,
+    Expression<DateTime>? lastLoginAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (fullName != null) 'full_name': fullName,
+      if (email != null) 'email': email,
+      if (role != null) 'role': role,
+      if (status != null) 'status': status,
+      if (mfaEnabled != null) 'mfa_enabled': mfaEnabled,
+      if (lastLoginAt != null) 'last_login_at': lastLoginAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  UsersCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? fullName,
+      Value<String>? email,
+      Value<String>? role,
+      Value<String>? status,
+      Value<bool>? mfaEnabled,
+      Value<DateTime?>? lastLoginAt,
+      Value<int>? rowid}) {
+    return UsersCompanion(
+      id: id ?? this.id,
+      fullName: fullName ?? this.fullName,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      status: status ?? this.status,
+      mfaEnabled: mfaEnabled ?? this.mfaEnabled,
+      lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (fullName.present) {
+      map['full_name'] = Variable<String>(fullName.value);
+    }
+    if (email.present) {
+      map['email'] = Variable<String>(email.value);
+    }
+    if (role.present) {
+      map['role'] = Variable<String>(role.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (mfaEnabled.present) {
+      map['mfa_enabled'] = Variable<bool>(mfaEnabled.value);
+    }
+    if (lastLoginAt.present) {
+      map['last_login_at'] = Variable<DateTime>(lastLoginAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UsersCompanion(')
+          ..write('id: $id, ')
+          ..write('fullName: $fullName, ')
+          ..write('email: $email, ')
+          ..write('role: $role, ')
+          ..write('status: $status, ')
+          ..write('mfaEnabled: $mfaEnabled, ')
+          ..write('lastLoginAt: $lastLoginAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -7280,6 +7668,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $FormTemplatesTable formTemplates = $FormTemplatesTable(this);
   late final $RequestsTable requests = $RequestsTable(this);
   late final $NotificationsTable notifications = $NotificationsTable(this);
+  late final $UsersTable users = $UsersTable(this);
   late final ProjectDao projectDao = ProjectDao(this as AppDatabase);
   late final SyncQueueDao syncQueueDao = SyncQueueDao(this as AppDatabase);
   late final AnalyticsDao analyticsDao = AnalyticsDao(this as AppDatabase);
@@ -7296,6 +7685,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final RequestDao requestDao = RequestDao(this as AppDatabase);
   late final NotificationDao notificationDao =
       NotificationDao(this as AppDatabase);
+  late final UserDao userDao = UserDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7314,7 +7704,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         meta,
         formTemplates,
         requests,
-        notifications
+        notifications,
+        users
       ];
 }
 
@@ -10770,6 +11161,200 @@ typedef $$NotificationsTableProcessedTableManager = ProcessedTableManager<
     ),
     Notification,
     PrefetchHooks Function()>;
+typedef $$UsersTableCreateCompanionBuilder = UsersCompanion Function({
+  required String id,
+  required String fullName,
+  required String email,
+  required String role,
+  required String status,
+  Value<bool> mfaEnabled,
+  Value<DateTime?> lastLoginAt,
+  Value<int> rowid,
+});
+typedef $$UsersTableUpdateCompanionBuilder = UsersCompanion Function({
+  Value<String> id,
+  Value<String> fullName,
+  Value<String> email,
+  Value<String> role,
+  Value<String> status,
+  Value<bool> mfaEnabled,
+  Value<DateTime?> lastLoginAt,
+  Value<int> rowid,
+});
+
+class $$UsersTableFilterComposer extends Composer<_$AppDatabase, $UsersTable> {
+  $$UsersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get fullName => $composableBuilder(
+      column: $table.fullName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get email => $composableBuilder(
+      column: $table.email, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get role => $composableBuilder(
+      column: $table.role, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get mfaEnabled => $composableBuilder(
+      column: $table.mfaEnabled, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get lastLoginAt => $composableBuilder(
+      column: $table.lastLoginAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$UsersTableOrderingComposer
+    extends Composer<_$AppDatabase, $UsersTable> {
+  $$UsersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get fullName => $composableBuilder(
+      column: $table.fullName, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get email => $composableBuilder(
+      column: $table.email, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get role => $composableBuilder(
+      column: $table.role, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get status => $composableBuilder(
+      column: $table.status, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get mfaEnabled => $composableBuilder(
+      column: $table.mfaEnabled, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get lastLoginAt => $composableBuilder(
+      column: $table.lastLoginAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$UsersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $UsersTable> {
+  $$UsersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get fullName =>
+      $composableBuilder(column: $table.fullName, builder: (column) => column);
+
+  GeneratedColumn<String> get email =>
+      $composableBuilder(column: $table.email, builder: (column) => column);
+
+  GeneratedColumn<String> get role =>
+      $composableBuilder(column: $table.role, builder: (column) => column);
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<bool> get mfaEnabled => $composableBuilder(
+      column: $table.mfaEnabled, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get lastLoginAt => $composableBuilder(
+      column: $table.lastLoginAt, builder: (column) => column);
+}
+
+class $$UsersTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $UsersTable,
+    UserTableData,
+    $$UsersTableFilterComposer,
+    $$UsersTableOrderingComposer,
+    $$UsersTableAnnotationComposer,
+    $$UsersTableCreateCompanionBuilder,
+    $$UsersTableUpdateCompanionBuilder,
+    (UserTableData, BaseReferences<_$AppDatabase, $UsersTable, UserTableData>),
+    UserTableData,
+    PrefetchHooks Function()> {
+  $$UsersTableTableManager(_$AppDatabase db, $UsersTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UsersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UsersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UsersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> fullName = const Value.absent(),
+            Value<String> email = const Value.absent(),
+            Value<String> role = const Value.absent(),
+            Value<String> status = const Value.absent(),
+            Value<bool> mfaEnabled = const Value.absent(),
+            Value<DateTime?> lastLoginAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              UsersCompanion(
+            id: id,
+            fullName: fullName,
+            email: email,
+            role: role,
+            status: status,
+            mfaEnabled: mfaEnabled,
+            lastLoginAt: lastLoginAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String fullName,
+            required String email,
+            required String role,
+            required String status,
+            Value<bool> mfaEnabled = const Value.absent(),
+            Value<DateTime?> lastLoginAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              UsersCompanion.insert(
+            id: id,
+            fullName: fullName,
+            email: email,
+            role: role,
+            status: status,
+            mfaEnabled: mfaEnabled,
+            lastLoginAt: lastLoginAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$UsersTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $UsersTable,
+    UserTableData,
+    $$UsersTableFilterComposer,
+    $$UsersTableOrderingComposer,
+    $$UsersTableAnnotationComposer,
+    $$UsersTableCreateCompanionBuilder,
+    $$UsersTableUpdateCompanionBuilder,
+    (UserTableData, BaseReferences<_$AppDatabase, $UsersTable, UserTableData>),
+    UserTableData,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -10801,4 +11386,6 @@ class $AppDatabaseManager {
       $$RequestsTableTableManager(_db, _db.requests);
   $$NotificationsTableTableManager get notifications =>
       $$NotificationsTableTableManager(_db, _db.notifications);
+  $$UsersTableTableManager get users =>
+      $$UsersTableTableManager(_db, _db.users);
 }

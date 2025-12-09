@@ -1,5 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
+import '../../../../core/db/app_database.dart';
+import '../../../../core/db/daos/user_dao.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/services/token_storage_service.dart';
 import '../../domain/entities/user.dart';
@@ -10,10 +12,12 @@ import '../models/auth_tokens_model.dart';
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
   final TokenStorageService tokenStorageService;
+  final UserDao userDao;
 
   AuthRepositoryImpl({
     required this.remoteDataSource,
     required this.tokenStorageService,
+    required this.userDao,
   });
 
   @override
@@ -35,6 +39,19 @@ class AuthRepositoryImpl implements AuthRepository {
         print('✅ [AuthRepository] Post-login auth check: $isAuth');
 
         await tokenStorageService.setUserEmail(email);
+
+        // Persist user profile to local DB for Profile screen
+        print('👤 [AuthRepository] Saving user profile to DB...');
+        await userDao.insertUser(UserTableData(
+          id: response.user.id,
+          fullName: response.user.fullName,
+          email: response.user.email,
+          role: response.user.role ?? '',
+          status: response.user.status ?? '',
+          mfaEnabled: response.user.mfaEnabled,
+          lastLoginAt: response.user.lastLoginAt,
+        ));
+        print('✅ [AuthRepository] User profile saved to DB');
       }
 
       return Right(response.user);
@@ -60,13 +77,23 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final accessToken = await tokenStorageService.getAccessToken();
       if (accessToken != null) {
-        await remoteDataSource.logout(accessToken);
+        try {
+          await remoteDataSource.logout(accessToken);
+        } catch (e) {
+          // Ignore network errors during logout - we still want to clear local state
+          print(
+              '⚠️ [AuthRepository] Remote logout failed, continuing with local cleanup: $e');
+        }
       }
       await tokenStorageService.clearTokens();
       await tokenStorageService.clearUserEmail();
+
+      // Clear user profile from local DB
+      print('👤 [AuthRepository] Clearing user profile from DB...');
+      await userDao.deleteUser();
+      print('✅ [AuthRepository] User profile cleared from DB');
+
       return const Right(null);
-    } on DioException catch (e) {
-      return Left(_mapDioExceptionToFailure(e));
     } catch (e) {
       return Left(ServerFailure('Unexpected error during logout: $e'));
     }
