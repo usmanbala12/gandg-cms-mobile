@@ -25,6 +25,7 @@ abstract class ReportRepository {
   
   Future<void> cleanupOldReports(String projectId);
   Future<List<FormTemplateEntity>> getTemplates({bool forceRefresh = false});
+  Future<RepositoryResult<FormTemplateEntity>> getTemplate(String id);
 
   /// Creates a report with the given data and returns the report ID
   Future<String> createReportWithData({

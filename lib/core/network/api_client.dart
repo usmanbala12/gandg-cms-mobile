@@ -601,6 +601,26 @@ class ApiClient {
     }
   }
 
+  /// Fetch a single form template.
+  Future<Map<String, dynamic>> fetchTemplate(String templateId) async {
+    try {
+      final response = await dio.get('/api/v1/form-templates/$templateId');
+      logger.i('Fetched template $templateId: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map && data['data'] != null) {
+          return Map<String, dynamic>.from(data['data']);
+        }
+        return data is Map ? Map<String, dynamic>.from(data) : {};
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error fetching template $templateId: $e');
+      rethrow;
+    }
+  }
+
   /// Fetch reports for a project.
   /// TODO: Adjust response shape based on actual backend contract.
   Future<List<Map<String, dynamic>>> fetchProjectReports(

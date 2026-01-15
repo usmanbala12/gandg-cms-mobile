@@ -9,6 +9,10 @@ class ReportRemoteDataSource {
     return await apiClient.fetchTemplates();
   }
 
+  Future<Map<String, dynamic>> fetchTemplate(String templateId) async {
+    return await apiClient.fetchTemplate(templateId);
+  }
+
   Future<List<Map<String, dynamic>>> fetchProjectReports(
     String projectId, {
     int page = 0,

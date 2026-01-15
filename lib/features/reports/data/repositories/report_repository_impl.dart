@@ -286,4 +286,58 @@ class ReportRepositoryImpl implements ReportRepository {
       );
     }
   }
+
+  @override
+  Future<RepositoryResult<FormTemplateEntity>> getTemplate(String id) async {
+    final isOnline = await networkInfo.isOnline();
+
+    if (!isOnline) {
+      return RepositoryResult.local(
+        const FormTemplateEntity(
+          id: '',
+          name: '',
+          description: '',
+          category: '',
+          isActive: false,
+          fields: [],
+        ),
+        message: 'You are offline. Template details cannot be loaded.',
+      );
+    }
+
+    try {
+      logger.i('Fetching template $id from remote API');
+      final remoteData = await remoteDataSource.fetchTemplate(id);
+      final template = FormTemplateModel.fromJson(remoteData);
+
+      return RepositoryResult.remote(template);
+    } on DioException catch (e) {
+      final message = e.errorMessage;
+      logger.e('Dio error fetching template $id: $message');
+      return RepositoryResult.local(
+        const FormTemplateEntity(
+          id: '',
+          name: '',
+          description: '',
+          category: '',
+          isActive: false,
+          fields: [],
+        ),
+        message: message,
+      );
+    } catch (e) {
+      logger.e('Error fetching template $id: $e');
+      return RepositoryResult.local(
+        const FormTemplateEntity(
+          id: '',
+          name: '',
+          description: '',
+          category: '',
+          isActive: false,
+          fields: [],
+        ),
+        message: 'Error loading template: $e',
+      );
+    }
+  }
 }
