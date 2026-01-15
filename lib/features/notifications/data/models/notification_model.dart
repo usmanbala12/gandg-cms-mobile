@@ -1,10 +1,8 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart';
-
-import '../../../../core/db/app_database.dart';
 import '../../domain/entities/notification_entity.dart';
 
+/// Simplified NotificationModel - remote only, no local DB dependencies.
 class NotificationModel extends NotificationEntity {
   const NotificationModel({
     required super.id,
@@ -21,11 +19,11 @@ class NotificationModel extends NotificationEntity {
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
-      id: json['id'] ?? '',
-      userId: json['user_id'] ?? '',
-      projectId: json['project_id'],
+      id: json['id']?.toString() ?? '',
+      userId: json['user_id']?.toString() ?? '',
+      projectId: json['project_id']?.toString(),
       title: json['title'] ?? '',
-      body: json['body'] ?? '',
+      body: json['body'] ?? json['message'] ?? '',
       type: json['type'],
       isRead: json['is_read'] == 1 || json['is_read'] == true,
       createdAt: json['created_at'] is int
@@ -33,25 +31,10 @@ class NotificationModel extends NotificationEntity {
           : DateTime.tryParse(json['created_at'] ?? '')
                   ?.millisecondsSinceEpoch ??
               DateTime.now().millisecondsSinceEpoch,
-      serverId: json['id'],
+      serverId: json['id']?.toString(),
       meta: json['metadata'] != null && json['metadata'] is String
           ? jsonDecode(json['metadata'])
           : (json['metadata'] is Map ? json['metadata'] : null),
-    );
-  }
-
-  factory NotificationModel.fromDb(Notification row) {
-    return NotificationModel(
-      id: row.id,
-      userId: row.userId,
-      projectId: row.projectId,
-      title: row.title,
-      body: row.body,
-      type: row.type,
-      isRead: row.isRead == 1,
-      createdAt: row.createdAt,
-      serverId: row.serverId,
-      meta: row.meta != null ? jsonDecode(row.meta!) : null,
     );
   }
 
@@ -67,21 +50,6 @@ class NotificationModel extends NotificationEntity {
       createdAt: entity.createdAt,
       serverId: entity.serverId,
       meta: entity.meta,
-    );
-  }
-
-  NotificationsCompanion toCompanion() {
-    return NotificationsCompanion(
-      id: Value(id),
-      userId: Value(userId),
-      projectId: Value(projectId),
-      title: Value(title),
-      body: Value(body),
-      type: Value(type),
-      isRead: Value(isRead ? 1 : 0),
-      createdAt: Value(createdAt),
-      serverId: Value(serverId),
-      meta: Value(meta != null ? jsonEncode(meta) : null),
     );
   }
 }

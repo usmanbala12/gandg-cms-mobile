@@ -1,18 +1,27 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:logger/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../features/authentication/data/models/auth_response_model.dart';
+import '../../features/authentication/data/models/user_model.dart';
 
 class TokenStorageService {
   static const String _accessTokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
+  static const String _tokenExpiryKey = 'token_expiry';
+  static const String _userDataKey = 'user_data';
   static const String _isBiometricEnabledKey = 'is_biometric_enabled';
   static const String _userEmailKey = 'user_email';
 
   final FlutterSecureStorage _secureStorage;
   final SharedPreferences _sharedPreferences;
+  final Logger _logger = Logger();
 
   // In-memory cache for runtime performance
   String? _cachedAccessToken;
   String? _cachedRefreshToken;
+  UserModel? _cachedUser;
 
   TokenStorageService({
     required FlutterSecureStorage secureStorage,
@@ -20,42 +29,33 @@ class TokenStorageService {
   }) : _secureStorage = secureStorage,
        _sharedPreferences = sharedPreferences;
 
+  // Stream for signaling force logout
+  final _logoutController = StreamController<void>.broadcast();
+  Stream<void> get logoutStream => _logoutController.stream;
+
+  /// Trigger a force logout across the app
+  Future<void> triggerLogout() async {
+    _logger.e('🚨 [TokenStorageService] Triggering force logout');
+    await clearTokens();
+    _logoutController.add(null);
+  }
+
   /// Save access and refresh tokens securely
   Future<void> saveTokens({
     required String accessToken,
     required String refreshToken,
   }) async {
+    print('🔑 [TokenStorageService] Saving tokens (access length: ${accessToken.length})');
     try {
-      print('🔐 [TokenStorage] Saving tokens...');
-      print('🔐 [TokenStorage] Access token length: ${accessToken.length}');
-      print('🔐 [TokenStorage] Refresh token length: ${refreshToken.length}');
-
       await Future.wait([
         _secureStorage.write(key: _accessTokenKey, value: accessToken),
         _secureStorage.write(key: _refreshTokenKey, value: refreshToken),
       ]);
       _cachedAccessToken = accessToken;
       _cachedRefreshToken = refreshToken;
-
-      print('✅ [TokenStorage] Tokens saved successfully');
-
-      // Immediate verification
-      final savedAccessToken = await _secureStorage.read(key: _accessTokenKey);
-      final savedRefreshToken = await _secureStorage.read(
-        key: _refreshTokenKey,
-      );
-
-      if (savedAccessToken != null && savedRefreshToken != null) {
-        print('✅ [TokenStorage] Verification: Tokens persisted correctly');
-      } else {
-        print(
-          '❌ [TokenStorage] Verification FAILED: Tokens not found after save!',
-        );
-        print('   Access token present: ${savedAccessToken != null}');
-        print('   Refresh token present: ${savedRefreshToken != null}');
-      }
+      print('✅ [TokenStorageService] Tokens saved and cached in memory');
     } catch (e) {
-      print('❌ [TokenStorage] Failed to save tokens: $e');
+      print('❌ [TokenStorageService] Error saving tokens: $e');
       throw Exception('Failed to save tokens: $e');
     }
   }
@@ -64,25 +64,22 @@ class TokenStorageService {
   Future<String?> getAccessToken() async {
     try {
       if (_cachedAccessToken != null) {
-        print('🔑 [TokenStorage] Access token retrieved from cache');
+        // print('📖 [TokenStorageService] Returning cached access token');
         return _cachedAccessToken;
       }
 
-      print('🔍 [TokenStorage] Fetching access token from secure storage...');
+      print('📖 [TokenStorageService] Reading access token from secure storage...');
       final token = await _secureStorage.read(key: _accessTokenKey);
-
       if (token != null) {
         _cachedAccessToken = token;
-        print(
-          '✅ [TokenStorage] Access token found in storage (length: ${token.length})',
-        );
+        final preview = token.length > 8 ? '${token.substring(0, 8)}...' : 'short';
+        print('✅ [TokenStorageService] Access token retrieved and cached ($preview)');
       } else {
-        print('⚠️ [TokenStorage] No access token found in storage');
+        print('⚠️ [TokenStorageService] No access token found in secure storage');
       }
-
       return token;
     } catch (e) {
-      print('❌ [TokenStorage] Failed to get access token: $e');
+      print('❌ [TokenStorageService] Error reading access token: $e');
       throw Exception('Failed to get access token: $e');
     }
   }
@@ -93,6 +90,7 @@ class TokenStorageService {
       if (_cachedRefreshToken != null) {
         return _cachedRefreshToken;
       }
+      print('📖 [TokenStorageService] Reading refresh token from secure storage...');
       final token = await _secureStorage.read(key: _refreshTokenKey);
       if (token != null) {
         _cachedRefreshToken = token;
@@ -103,16 +101,100 @@ class TokenStorageService {
     }
   }
 
+  /// Save token expiry time
+  Future<void> saveTokenExpiry(DateTime expiry) async {
+    print('⏰ [TokenStorageService] Saving token expiry: $expiry');
+    await _sharedPreferences.setString(
+      _tokenExpiryKey,
+      expiry.toIso8601String(),
+    );
+  }
+
+  /// Get token expiry time
+  Future<DateTime?> getTokenExpiry() async {
+    final value = _sharedPreferences.getString(_tokenExpiryKey);
+    return value != null ? DateTime.tryParse(value) : null;
+  }
+
+  /// Check if token is expired or about to expire
+  Future<bool> isTokenExpired() async {
+    final expiry = await getTokenExpiry();
+    if (expiry == null) return true;
+    // Buffer of 30 seconds
+    final isExpired = DateTime.now().add(const Duration(seconds: 30)).isAfter(expiry);
+    if (isExpired) {
+      print('⏰ [TokenStorageService] Token IS EXPIRED (Expiry: $expiry)');
+    }
+    return isExpired;
+  }
+
+  /// Save user data
+  Future<void> saveUser(UserModel user) async {
+    print('👤 [TokenStorageService] Saving user data for: ${user.email}');
+    try {
+      await _sharedPreferences.setString(
+        _userDataKey,
+        jsonEncode(user.toJson()),
+      );
+      _cachedUser = user;
+    } catch (e) {
+      throw Exception('Failed to save user data: $e');
+    }
+  }
+
+  /// Get saved user data
+  Future<UserModel?> getUser() async {
+    try {
+      if (_cachedUser != null) {
+        return _cachedUser;
+      }
+      final value = _sharedPreferences.getString(_userDataKey);
+      if (value != null) {
+        _cachedUser = UserModel.fromJson(jsonDecode(value));
+        return _cachedUser;
+      }
+      return null;
+    } catch (e) {
+      throw Exception('Failed to get user data: $e');
+    }
+  }
+
+  /// Convenience method to save complete auth response
+  Future<void> saveAuthResponse(AuthResponseModel response) async {
+    print('📦 [TokenStorageService] Processing auth response...');
+    if (response.accessToken != null && response.refreshToken != null) {
+      await saveTokens(
+        accessToken: response.accessToken!,
+        refreshToken: response.refreshToken!,
+      );
+    }
+    
+    final expiry = response.tokenExpiry;
+    if (expiry != null) {
+      await saveTokenExpiry(expiry);
+    }
+    
+    if (response.user != null) {
+      await saveUser(response.user!);
+      await setUserEmail(response.user!.email);
+    }
+  }
+
   /// Clear all tokens and cached data
   Future<void> clearTokens() async {
+    print('🧹 [TokenStorageService] Clearing all tokens and cache');
     try {
       await Future.wait([
         _secureStorage.delete(key: _accessTokenKey),
         _secureStorage.delete(key: _refreshTokenKey),
+        _sharedPreferences.remove(_tokenExpiryKey),
+        _sharedPreferences.remove(_userDataKey),
       ]);
       _cachedAccessToken = null;
       _cachedRefreshToken = null;
+      _cachedUser = null;
     } catch (e) {
+      print('❌ [TokenStorageService] Error clearing tokens: $e');
       throw Exception('Failed to clear tokens: $e');
     }
   }
@@ -165,19 +247,12 @@ class TokenStorageService {
   /// Check if user is authenticated (has valid access token)
   Future<bool> isAuthenticated() async {
     try {
-      print('🔐 [TokenStorage] Checking authentication status...');
       final accessToken = await getAccessToken();
-      final isAuth = accessToken != null && accessToken.isNotEmpty;
-
-      if (isAuth) {
-        print('✅ [TokenStorage] User IS authenticated (token present)');
-      } else {
-        print('❌ [TokenStorage] User NOT authenticated (no token found)');
-      }
-
-      return isAuth;
+      final authed = accessToken != null && accessToken.isNotEmpty;
+      print('🔐 [TokenStorageService] isAuthenticated check: $authed');
+      return authed;
     } catch (e) {
-      print('❌ [TokenStorage] Error checking authentication: $e');
+      print('❌ [TokenStorageService] isAuthenticated error: $e');
       return false;
     }
   }

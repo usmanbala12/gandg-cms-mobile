@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../../../../core/di/injection_container.dart';
 import '../../../notifications/presentation/cubit/notifications_cubit.dart';
 import '../widgets/notification_list_item.dart';
 
@@ -10,10 +8,7 @@ class NotificationsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<NotificationsCubit>(),
-      child: const _NotificationsView(),
-    );
+    return const _NotificationsView();
   }
 }
 

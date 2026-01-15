@@ -11,36 +11,33 @@ class ReportRemoteDataSource {
 
   Future<List<Map<String, dynamic>>> fetchProjectReports(
     String projectId, {
-    int limit = 50,
-    int offset = 0,
+    int page = 0,
+    int size = 10,
   }) async {
     return await apiClient.fetchProjectReports(
       projectId,
-      limit: limit,
-      offset: offset,
+      page: page,
+      size: size,
     );
   }
 
   Future<Map<String, dynamic>> fetchReport(
-    String projectId,
     String reportId,
   ) async {
-    return await apiClient.fetchReport(projectId, reportId);
+    return await apiClient.fetchReport(reportId);
   }
 
   Future<Map<String, dynamic>> createReport(
-    String projectId,
     Map<String, dynamic> payload,
   ) async {
-    return await apiClient.createReport(projectId, payload);
+    return await apiClient.createReport(payload);
   }
 
   Future<Map<String, dynamic>> updateReport(
-    String projectId,
     String reportId,
     Map<String, dynamic> payload,
   ) async {
-    return await apiClient.updateReport(projectId, reportId, payload);
+    return await apiClient.updateReport(reportId, payload);
   }
 
   Future<void> deleteReport(String projectId, String reportId) async {

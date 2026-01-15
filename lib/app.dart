@@ -18,9 +18,6 @@ class App extends StatelessWidget {
         BlocProvider<AuthBloc>(
           create: (_) => sl<AuthBloc>(),
         ),
-        BlocProvider<DashboardCubit>(
-          create: (_) => sl<DashboardCubit>()..init(),
-        ),
         BlocProvider<SettingsCubit>(
           create: (_) => sl<SettingsCubit>()..loadStorageInfo(),
         ),

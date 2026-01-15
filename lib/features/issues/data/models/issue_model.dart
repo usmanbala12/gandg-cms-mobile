@@ -1,9 +1,7 @@
-import 'package:drift/drift.dart';
-
-import '../../../../core/db/app_database.dart';
 import '../../domain/entities/issue_entity.dart';
 
-/// Data model for Issue with converters between DB, JSON, and Entity.
+/// Data model for Issue with converters between JSON and Entity.
+/// Simplified to remove database dependencies (remote-only mode).
 class IssueModel {
   final String id;
   final String projectId;
@@ -39,57 +37,15 @@ class IssueModel {
     this.meta,
   });
 
-  /// Convert from Drift database row to model.
-  factory IssueModel.fromDb(Issue dbRow) {
-    return IssueModel(
-      id: dbRow.id,
-      projectId: dbRow.projectId,
-      title: dbRow.title,
-      description: dbRow.description,
-      priority: dbRow.priority,
-      assigneeId: dbRow.assigneeId,
-      status: dbRow.status,
-      category: dbRow.category,
-      location: dbRow.location,
-      dueDate: dbRow.dueDate,
-      createdAt: dbRow.createdAt,
-      updatedAt: dbRow.updatedAt,
-      serverId: dbRow.serverId,
-      serverUpdatedAt: dbRow.serverUpdatedAt,
-      meta: dbRow.meta,
-    );
-  }
-
-  /// Convert to Drift companion for insert/update.
-  IssuesCompanion toCompanion() {
-    return IssuesCompanion(
-      id: Value(id),
-      projectId: Value(projectId),
-      title: Value(title),
-      description: Value(description),
-      priority: Value(priority),
-      assigneeId: Value(assigneeId),
-      status: Value(status),
-      category: Value(category),
-      location: Value(location),
-      dueDate: Value(dueDate),
-      createdAt: Value(createdAt),
-      updatedAt: Value(updatedAt),
-      serverId: Value(serverId),
-      serverUpdatedAt: Value(serverUpdatedAt),
-      meta: Value(meta),
-    );
-  }
-
   /// Convert from JSON (server response).
   factory IssueModel.fromJson(Map<String, dynamic> json) {
     return IssueModel(
-      id: json['id'] ?? '',
-      projectId: json['project_id'] ?? json['projectId'] ?? '',
+      id: json['id']?.toString() ?? '',
+      projectId: json['project_id']?.toString() ?? json['projectId']?.toString() ?? '',
       title: json['title'] ?? '',
       description: json['description'],
       priority: json['priority'],
-      assigneeId: json['assignee_id'] ?? json['assigneeId'],
+      assigneeId: json['assignee_id']?.toString() ?? json['assigneeId']?.toString(),
       status: json['status'],
       category: json['category'],
       location: json['location'],
@@ -102,7 +58,7 @@ class IssueModel {
           json['updated_at'] ??
           json['updatedAt'] ??
           DateTime.now().millisecondsSinceEpoch,
-      serverId: json['server_id'] ?? json['serverId'] ?? json['id'],
+      serverId: json['server_id']?.toString() ?? json['serverId']?.toString() ?? json['id']?.toString(),
       serverUpdatedAt: json['server_updated_at'] ?? json['serverUpdatedAt'],
       meta: json['meta'],
     );

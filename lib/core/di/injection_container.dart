@@ -6,23 +6,14 @@ import '../network/dio_client.dart';
 import '../network/api_client.dart';
 import '../network/network_info.dart';
 import '../services/token_storage_service.dart';
+import '../services/location_service.dart';
 import '../utils/biometrics/biometric_auth_service.dart';
 import '../db/app_database.dart';
 import '../db/daos/project_dao.dart';
 import '../db/daos/sync_queue_dao.dart';
-import '../db/daos/analytics_dao.dart';
-import '../db/daos/report_dao.dart';
-import '../db/daos/issue_dao.dart';
-import '../db/daos/issue_comment_dao.dart';
-import '../db/daos/issue_history_dao.dart';
-import '../db/daos/issue_media_dao.dart';
-import '../db/daos/media_dao.dart';
-import '../db/daos/conflict_dao.dart';
 import '../db/daos/meta_dao.dart';
 import '../db/daos/request_dao.dart';
 import '../db/daos/user_dao.dart';
-import '../db/repositories/report_repository.dart';
-import '../db/repositories/media_repository.dart';
 import '../sync/sync_manager.dart';
 import '../../features/authentication/data/datasources/auth_remote_datasource.dart';
 import '../../features/authentication/data/repositories/auth_repository_impl.dart';
@@ -32,11 +23,17 @@ import '../../features/authentication/domain/usecases/logout_usecase.dart';
 import '../../features/authentication/domain/usecases/verify_mfa_usecase.dart';
 import '../../features/authentication/domain/usecases/refresh_token_usecase.dart';
 import '../../features/authentication/domain/usecases/get_current_user_usecase.dart';
+import '../../features/authentication/domain/usecases/setup_mfa_usecase.dart';
+import '../../features/authentication/domain/usecases/enable_mfa_usecase.dart';
+import '../../features/authentication/domain/usecases/disable_mfa_usecase.dart';
+import '../../features/authentication/domain/usecases/request_password_reset_usecase.dart';
+import '../../features/authentication/domain/usecases/confirm_password_reset_usecase.dart';
 import '../../features/authentication/presentation/bloc/auth/auth_bloc.dart';
+import '../../core/services/token_refresh_service.dart';
 import '../../features/dashboard/data/repositories/dashboard_repository_impl.dart';
 import '../../features/dashboard/presentation/bloc/dashboard_cubit.dart';
+import '../../features/reports/presentation/cubit/reports_cubit.dart';
 import '../../features/reports/data/repositories/report_repository_impl.dart';
-import '../../features/reports/data/repositories/media_repository_impl.dart';
 import '../../features/reports/data/datasources/report_remote_datasource.dart';
 import '../../features/issues/data/datasources/issue_remote_datasource.dart';
 import '../../features/issues/data/repositories/issue_repository_impl.dart';
@@ -48,7 +45,6 @@ import '../../features/requests/data/repositories/request_repository_impl.dart';
 import '../../features/requests/domain/repositories/request_repository.dart';
 import '../../features/requests/presentation/cubit/request_create_cubit.dart';
 import '../../features/requests/presentation/cubit/requests_cubit.dart';
-import '../../core/db/daos/notification_dao.dart';
 import '../../features/notifications/data/datasources/notification_remote_datasource.dart';
 import '../../features/notifications/data/repositories/notification_repository_impl.dart';
 import '../../features/notifications/domain/repositories/notification_repository.dart';
@@ -58,6 +54,7 @@ import '../../features/profile/data/datasources/profile_remote_datasource.dart';
 import '../../features/profile/data/repositories/profile_repository_impl.dart';
 import '../../features/profile/domain/repositories/profile_repository.dart';
 import '../../features/profile/presentation/cubit/profile_cubit.dart';
+import '../../features/reports/domain/repositories/report_repository.dart';
 
 final sl = GetIt.instance;
 
@@ -79,27 +76,21 @@ Future<void> initDependencies({required String baseUrl}) async {
   DioClient.initialize(sl<TokenStorageService>());
 
   sl.registerLazySingleton(() => BiometricAuthService());
+  sl.registerLazySingleton(() => LocationService());
 
-  // Database Layer
+  sl.registerLazySingleton(
+    () => TokenRefreshService(
+      tokenStorageService: sl(),
+      refreshTokenUseCase: sl(),
+    ),
+  );
+
+  // Database Layer (Simplified - only essential tables)
   sl.registerLazySingleton<AppDatabase>(() => AppDatabase());
 
-  // DAOs
+  // DAOs (Simplified - only essential DAOs)
   sl.registerLazySingleton<ProjectDao>(() => ProjectDao(sl<AppDatabase>()));
   sl.registerLazySingleton<SyncQueueDao>(() => SyncQueueDao(sl<AppDatabase>()));
-  sl.registerLazySingleton<AnalyticsDao>(() => AnalyticsDao(sl<AppDatabase>()));
-  sl.registerLazySingleton<ReportDao>(() => ReportDao(sl<AppDatabase>()));
-  sl.registerLazySingleton<IssueDao>(() => IssueDao(sl<AppDatabase>()));
-  sl.registerLazySingleton<IssueCommentDao>(
-    () => IssueCommentDao(sl<AppDatabase>()),
-  );
-  sl.registerLazySingleton<IssueHistoryDao>(
-    () => IssueHistoryDao(sl<AppDatabase>()),
-  );
-  sl.registerLazySingleton<IssueMediaDao>(
-    () => IssueMediaDao(sl<AppDatabase>()),
-  );
-  sl.registerLazySingleton<MediaDao>(() => MediaDao(sl<AppDatabase>()));
-  sl.registerLazySingleton<ConflictDao>(() => ConflictDao(sl<AppDatabase>()));
   sl.registerLazySingleton<MetaDao>(() => MetaDao(sl<AppDatabase>()));
   sl.registerLazySingleton<RequestDao>(() => RequestDao(sl<AppDatabase>()));
   sl.registerLazySingleton<UserDao>(() => UserDao(sl<AppDatabase>()));
@@ -110,25 +101,11 @@ Future<void> initDependencies({required String baseUrl}) async {
   // API Client
   sl.registerLazySingleton<ApiClient>(() => ApiClient(dio: sl<Dio>()));
 
-  // Core repositories & services
+  // Core repositories & services (Simplified)
   sl.registerLazySingleton<ReportRepository>(
     () => ReportRepositoryImpl(
-      db: sl(),
-      reportDao: sl(),
-      syncQueueDao: sl(),
       remoteDataSource: ReportRemoteDataSource(sl()),
-      mediaDao: sl(),
-      metaDao: sl(),
       networkInfo: sl(),
-    ),
-  );
-
-  sl.registerLazySingleton<MediaRepository>(
-    () => MediaRepositoryImpl(
-      db: sl(),
-      mediaDao: sl(),
-      syncQueueDao: sl(),
-      apiClient: sl(),
     ),
   );
 
@@ -138,13 +115,6 @@ Future<void> initDependencies({required String baseUrl}) async {
 
   sl.registerLazySingleton<IssueRepository>(
     () => IssueRepositoryImpl(
-      db: sl(),
-      issueDao: sl(),
-      issueCommentDao: sl(),
-      issueHistoryDao: sl(),
-      issueMediaDao: sl(),
-      syncQueueDao: sl(),
-      metaDao: sl(),
       remoteDataSource: sl(),
       networkInfo: sl(),
     ),
@@ -155,21 +125,14 @@ Future<void> initDependencies({required String baseUrl}) async {
       db: sl(),
       syncQueueDao: sl(),
       metaDao: sl(),
-      conflictDao: sl(),
       apiClient: sl(),
-      reportRepository: sl(),
-      mediaRepository: sl(),
-      issueRepository: sl(),
       requestRepository: sl(),
-      issueDao: sl(),
-      issueCommentDao: sl(),
     ),
   );
 
   sl.registerLazySingleton<DashboardRepository>(
     () => DashboardRepositoryImpl(
       projectDao: sl(),
-      analyticsDao: sl(),
       metaDao: sl(),
       apiClient: sl(),
       syncManager: sl(),
@@ -199,6 +162,11 @@ Future<void> initDependencies({required String baseUrl}) async {
   sl.registerLazySingleton(() => VerifyMFAUseCase(sl()));
   sl.registerLazySingleton(() => RefreshTokenUseCase(sl()));
   sl.registerLazySingleton(() => GetCurrentUserUseCase(sl()));
+  sl.registerLazySingleton(() => SetupMfaUseCase(sl()));
+  sl.registerLazySingleton(() => EnableMfaUseCase(sl()));
+  sl.registerLazySingleton(() => DisableMfaUseCase(sl()));
+  sl.registerLazySingleton(() => RequestPasswordResetUseCase(sl()));
+  sl.registerLazySingleton(() => ConfirmPasswordResetUseCase(sl()));
 
   // BLoCs
   sl.registerFactory<AuthBloc>(
@@ -207,14 +175,26 @@ Future<void> initDependencies({required String baseUrl}) async {
       logoutUseCase: sl(),
       verifyMFAUseCase: sl(),
       refreshTokenUseCase: sl(),
+      setupMfaUseCase: sl(),
+      enableMfaUseCase: sl(),
+      disableMfaUseCase: sl(),
+      requestPasswordResetUseCase: sl(),
+      confirmPasswordResetUseCase: sl(),
       biometricAuthService: sl(),
       tokenStorageService: sl(),
+      tokenRefreshService: sl(),
     ),
   );
 
   sl.registerFactory(() => DashboardCubit(repository: sl()));
 
   sl.registerFactory(() => IssuesBloc(repository: sl()));
+  sl.registerFactoryParam<ReportsCubit, DashboardCubit, void>(
+    (dashboardCubit, _) => ReportsCubit(
+      repository: sl(),
+      dashboardCubit: dashboardCubit,
+    ),
+  );
 
   // Features - Requests
   sl.registerLazySingleton<RequestRemoteDataSource>(
@@ -235,18 +215,13 @@ Future<void> initDependencies({required String baseUrl}) async {
   sl.registerFactory(() => RequestsCubit(repository: sl()));
   sl.registerFactory(() => RequestCreateCubit(repository: sl()));
 
-  // Features - Notifications
-  sl.registerLazySingleton<NotificationDao>(
-    () => NotificationDao(sl<AppDatabase>()),
-  );
-
+  // Features - Notifications (Remote only - no local caching)
   sl.registerLazySingleton<NotificationRemoteDataSource>(
     () => NotificationRemoteDataSource(sl()),
   );
 
   sl.registerLazySingleton<NotificationRepository>(
     () => NotificationRepositoryImpl(
-      notificationDao: sl(),
       remoteDataSource: sl(),
       networkInfo: sl(),
     ),
@@ -272,9 +247,7 @@ Future<void> initDependencies({required String baseUrl}) async {
       sharedPreferences: sl(),
       syncManager: sl(),
       syncQueueDao: sl(),
-      conflictDao: sl(),
       metaDao: sl(),
-      mediaDao: sl(),
       userDao: sl(),
       db: sl(),
     ),

@@ -30,13 +30,12 @@ class _IssuesListPageState extends State<IssuesListPage> {
   @override
   void initState() {
     super.initState();
-    _bloc = GetIt.I<IssuesBloc>();
+    _bloc = context.read<IssuesBloc>();
     _loadActiveProject();
   }
 
   @override
   void dispose() {
-    _bloc.close();
     _searchController.dispose();
     super.dispose();
   }
@@ -75,9 +74,7 @@ class _IssuesListPageState extends State<IssuesListPage> {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    return BlocProvider(
-      create: (_) => _bloc,
-      child: Scaffold(
+    return Scaffold(
         appBar: AppBar(
           title: _isSearching
               ? TextField(
@@ -127,6 +124,12 @@ class _IssuesListPageState extends State<IssuesListPage> {
             ),
             Expanded(
               child: BlocBuilder<IssuesBloc, IssuesState>(
+                buildWhen: (previous, current) =>
+                    previous.runtimeType != current.runtimeType ||
+                    (previous is IssuesLoaded &&
+                        current is IssuesLoaded &&
+                        (previous.issues != current.issues ||
+                            previous.errorMessage != current.errorMessage)),
                 builder: (context, state) {
                   if (state is IssuesError) {
                     return Center(
@@ -278,7 +281,6 @@ class _IssuesListPageState extends State<IssuesListPage> {
           },
           child: const Icon(Icons.add),
         ),
-      ),
-    );
+      );
   }
 }

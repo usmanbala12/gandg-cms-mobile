@@ -1,12 +1,17 @@
 import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:field_link/core/services/token_storage_service.dart';
+import 'package:field_link/core/services/token_refresh_service.dart';
 import 'package:field_link/core/utils/biometrics/biometric_auth_service.dart';
-import 'package:field_link/features/authentication/domain/entities/user.dart';
 import 'package:field_link/features/authentication/domain/usecases/login_usecase.dart';
 import 'package:field_link/features/authentication/domain/usecases/logout_usecase.dart';
 import 'package:field_link/features/authentication/domain/usecases/verify_mfa_usecase.dart';
 import 'package:field_link/features/authentication/domain/usecases/refresh_token_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/setup_mfa_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/enable_mfa_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/disable_mfa_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/request_password_reset_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/confirm_password_reset_usecase.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -15,17 +20,33 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final LogoutUseCase logoutUseCase;
   final VerifyMFAUseCase verifyMFAUseCase;
   final RefreshTokenUseCase refreshTokenUseCase;
+  final SetupMfaUseCase setupMfaUseCase;
+  final EnableMfaUseCase enableMfaUseCase;
+  final DisableMfaUseCase disableMfaUseCase;
+  final RequestPasswordResetUseCase requestPasswordResetUseCase;
+  final ConfirmPasswordResetUseCase confirmPasswordResetUseCase;
+  
   final BiometricAuthService biometricAuthService;
   final TokenStorageService tokenStorageService;
+  final TokenRefreshService tokenRefreshService;
+  
+  StreamSubscription<void>? _logoutSubscription;
 
   AuthBloc({
     required this.loginUseCase,
     required this.logoutUseCase,
     required this.verifyMFAUseCase,
     required this.refreshTokenUseCase,
+    required this.setupMfaUseCase,
+    required this.enableMfaUseCase,
+    required this.disableMfaUseCase,
+    required this.requestPasswordResetUseCase,
+    required this.confirmPasswordResetUseCase,
     required this.biometricAuthService,
     required this.tokenStorageService,
-  }) : super(AuthState.initial()) {
+    required this.tokenRefreshService,
+  }) : super(const AuthState(status: AuthStatus.initial)) {
+    on<AppStarted>(_onAppStarted);
     on<LoginRequested>(_onLoginRequested);
     on<MFARequested>(_onMFARequested);
     on<LogoutRequested>(_onLogoutRequested);
@@ -33,209 +54,217 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<BiometricLoginRequested>(_onBiometricLoginRequested);
     on<EnableBiometricRequested>(_onEnableBiometricRequested);
     on<DeclineBiometricRequested>(_onDeclineBiometricRequested);
+    on<MfaSetupRequested>(_onMfaSetupRequested);
+    on<MfaEnableRequested>(_onMfaEnableRequested);
+    on<MfaDisableRequested>(_onMfaDisableRequested);
+    on<PasswordResetRequested>(_onPasswordResetRequested);
+    on<PasswordResetConfirmed>(_onPasswordResetConfirmed);
+
+    _logoutSubscription = tokenStorageService.logoutStream.listen((_) {
+      add(const LogoutRequested());
+    });
   }
 
-  /// Handle login request
+  @override
+  Future<void> close() {
+    _logoutSubscription?.cancel();
+    return super.close();
+  }
+
+  FutureOr<void> _onAppStarted(
+    AppStarted event,
+    Emitter<AuthState> emit,
+  ) async {
+    final isAuthenticated = await tokenStorageService.isAuthenticated();
+    if (isAuthenticated) {
+      final user = await tokenStorageService.getUser();
+      if (user != null) {
+        emit(AuthState.authenticated(user));
+        tokenRefreshService.start();
+        return;
+      }
+    }
+    emit(AuthState.unauthenticated());
+  }
+
   FutureOr<void> _onLoginRequested(
     LoginRequested event,
     Emitter<AuthState> emit,
   ) async {
-    // Validate input
-    if (event.email.isEmpty || !event.email.contains('@')) {
-      emit(AuthState.error('Please enter a valid email address'));
-      return;
-    }
-    if (event.password.isEmpty || event.password.length < 6) {
-      emit(AuthState.error('Password must be at least 6 characters'));
-      return;
-    }
-
     emit(AuthState.authenticating());
 
     final result = await loginUseCase(event.email, event.password);
 
     result.fold(
-      (failure) {
-        emit(AuthState.error(failure.message));
-      },
-      (user) {
-        // Check if MFA is required by checking if we have tokens
-        // For now, we'll emit authenticated and let the UI handle MFA flow
-        emit(AuthState.authenticated(user));
+      (failure) => emit(AuthState.error(failure.message)),
+      (response) {
+        if (response.mfaRequired && response.mfaTempToken != null) {
+          emit(AuthState.mfaRequired(response.mfaTempToken!));
+        } else if (response.user != null) {
+          emit(AuthState.authenticated(response.user!));
+          tokenRefreshService.start();
+          
+          // Check for biometric setup after successful login
+          add(const CheckBiometricLoginRequested());
+        }
       },
     );
   }
 
-  /// Handle MFA verification
   FutureOr<void> _onMFARequested(
     MFARequested event,
     Emitter<AuthState> emit,
   ) async {
-    if (event.code.isEmpty || event.code.length != 6) {
-      emit(AuthState.error('Please enter a valid 6-digit code'));
-      return;
-    }
-
     emit(AuthState.authenticating());
 
-    final result = await verifyMFAUseCase(event.code, event.mfaToken);
+    final result = await verifyMFAUseCase(event.code, event.mfaTempToken);
 
     result.fold(
-      (failure) {
-        emit(AuthState.error(failure.message));
-      },
-      (_) {
-        // After MFA verification, we need to fetch user data
-        // For now, emit authenticated with a placeholder user
-        // TODO: Fetch user data from /me endpoint
-        emit(
-          AuthState.authenticated(
-            const User(
-                id: 'user_id', email: 'user@example.com', fullName: 'User'),
-          ),
-        );
+      (failure) => emit(AuthState.error(failure.message)),
+      (response) {
+        if (response.user != null) {
+          emit(AuthState.authenticated(response.user!));
+          tokenRefreshService.start();
+        } else {
+          emit(AuthState.error('MFA verification failed: No user data returned'));
+        }
       },
     );
   }
 
-  /// Handle logout
   FutureOr<void> _onLogoutRequested(
     LogoutRequested event,
     Emitter<AuthState> emit,
   ) async {
     emit(AuthState.loggingOut());
-
-    final result = await logoutUseCase();
-
-    result.fold(
-      (failure) {
-        // Even if logout fails on server, clear local state
-        emit(AuthState.unauthenticated());
-      },
-      (_) {
-        emit(AuthState.unauthenticated());
-      },
-    );
+    await logoutUseCase();
+    tokenRefreshService.stop();
+    emit(AuthState.unauthenticated());
   }
 
-  /// Check for biometric login on app startup
   FutureOr<void> _onCheckBiometricLoginRequested(
     CheckBiometricLoginRequested event,
     Emitter<AuthState> emit,
   ) async {
-    try {
-      // Check if biometric is enabled
-      final isBiometricEnabled = await tokenStorageService.isBiometricEnabled();
-      if (!isBiometricEnabled) {
-        emit(AuthState.unauthenticated());
-        return;
-      }
-
-      // Check if biometric is available on device
-      final isBiometricAvailable = await biometricAuthService.isAvailable();
-      if (!isBiometricAvailable) {
-        emit(AuthState.unauthenticated());
-        return;
-      }
-
-      // Get stored refresh token
-      final refreshToken = await tokenStorageService.getRefreshToken();
-      if (refreshToken == null) {
-        emit(AuthState.unauthenticated());
-        return;
-      }
-
+    final canUseBiometrics = await biometricAuthService.isAvailable();
+    final isEnabled = await tokenStorageService.isBiometricEnabled();
+    
+    if (canUseBiometrics && isEnabled) {
       emit(state.copyWith(isBiometricAvailable: true));
-    } catch (e) {
-      emit(AuthState.unauthenticated());
     }
   }
 
-  /// Handle biometric login
   FutureOr<void> _onBiometricLoginRequested(
     BiometricLoginRequested event,
     Emitter<AuthState> emit,
   ) async {
-    try {
-      emit(AuthState.authenticating());
+    emit(AuthState.authenticating());
+    
+    final authResult = await biometricAuthService.authenticate(
+      reason: 'Sign in to Field Link',
+    );
 
-      // Authenticate with biometrics
-      final result = await biometricAuthService.authenticate(
-        reason: 'Sign in with biometrics',
-      );
-
-      if (!result.success) {
-        emit(
-          AuthState.error(result.error ?? 'Biometric authentication failed'),
-        );
-        return;
-      }
-
-      // Get stored refresh token
+    if (authResult.success) {
       final refreshToken = await tokenStorageService.getRefreshToken();
-      if (refreshToken == null) {
-        emit(AuthState.error('No stored credentials found'));
-        return;
+      if (refreshToken != null) {
+        final result = await refreshTokenUseCase(refreshToken);
+        result.fold(
+          (failure) => emit(AuthState.error(failure.message)),
+          (response) {
+            if (response.user != null) {
+              emit(AuthState.authenticated(response.user!));
+              tokenRefreshService.start();
+            }
+          },
+        );
+      } else {
+        emit(AuthState.unauthenticated());
       }
-
-      // Refresh token to get new access token
-      final refreshResult = await refreshTokenUseCase(refreshToken);
-
-      refreshResult.fold(
-        (failure) {
-          emit(AuthState.error(failure.message));
-        },
-        (_) {
-          // TODO: Fetch user data from /me endpoint
-          emit(
-            AuthState.authenticated(
-              const User(
-                id: 'user_id',
-                email: 'user@example.com',
-                fullName: 'User',
-              ),
-            ),
-          );
-        },
-      );
-    } catch (e) {
-      emit(AuthState.error('Biometric authentication error: $e'));
+    } else {
+      emit(AuthState.error(authResult.error ?? 'Biometric authentication failed'));
     }
   }
 
-  /// Handle enabling biometric after login
   FutureOr<void> _onEnableBiometricRequested(
     EnableBiometricRequested event,
     Emitter<AuthState> emit,
   ) async {
-    try {
-      await tokenStorageService.setBiometricEnabled(true);
-      await tokenStorageService.setUserEmail(event.email);
-      emit(
-        AuthState.authenticated(
-          User(id: 'user_id', email: event.email, fullName: 'User'),
-        ),
-      );
-    } catch (e) {
-      emit(AuthState.error('Failed to enable biometric: $e'));
-    }
+    await tokenStorageService.setBiometricEnabled(true);
+    await tokenStorageService.setUserEmail(event.email);
+    // Stay in authenticated state
   }
 
-  /// Handle declining biometric setup
   FutureOr<void> _onDeclineBiometricRequested(
     DeclineBiometricRequested event,
     Emitter<AuthState> emit,
   ) async {
-    try {
-      await tokenStorageService.setBiometricEnabled(false);
-      emit(
-        AuthState.authenticated(
-          const User(
-              id: 'user_id', email: 'user@example.com', fullName: 'User'),
-        ),
-      );
-    } catch (e) {
-      emit(AuthState.error('Failed to update biometric settings: $e'));
-    }
+    await tokenStorageService.setBiometricEnabled(false);
+  }
+
+  FutureOr<void> _onMfaSetupRequested(
+    MfaSetupRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthState.authenticating());
+    final result = await setupMfaUseCase();
+    result.fold(
+      (failure) => emit(AuthState.error(failure.message)),
+      (setup) => emit(AuthState.mfaSetupPending(setup)),
+    );
+  }
+
+  FutureOr<void> _onMfaEnableRequested(
+    MfaEnableRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthState.authenticating());
+    final result = await enableMfaUseCase(event.code);
+    result.fold(
+      (failure) => emit(AuthState.error(failure.message)),
+      (_) {
+        // Refresh current user state to show MFA is enabled
+        add(AppStarted()); 
+      },
+    );
+  }
+
+  FutureOr<void> _onMfaDisableRequested(
+    MfaDisableRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthState.authenticating());
+    final result = await disableMfaUseCase();
+    result.fold(
+      (failure) => emit(AuthState.error(failure.message)),
+      (_) => add(AppStarted()),
+    );
+  }
+
+  FutureOr<void> _onPasswordResetRequested(
+    PasswordResetRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthState.authenticating());
+    final result = await requestPasswordResetUseCase(event.email);
+    result.fold(
+      (failure) => emit(AuthState.error(failure.message)),
+      (_) => emit(AuthState.passwordResetSent(event.email)),
+    );
+  }
+
+  FutureOr<void> _onPasswordResetConfirmed(
+    PasswordResetConfirmed event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthState.authenticating());
+    final result = await confirmPasswordResetUseCase(
+      token: event.token,
+      newPassword: event.newPassword,
+      confirmPassword: event.confirmPassword,
+    );
+    result.fold(
+      (failure) => emit(AuthState.error(failure.message)),
+      (_) => emit(AuthState.passwordResetSuccess()),
+    );
   }
 }

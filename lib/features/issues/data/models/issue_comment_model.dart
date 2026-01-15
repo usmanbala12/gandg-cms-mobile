@@ -1,9 +1,7 @@
-import 'package:drift/drift.dart';
-
-import '../../../../core/db/app_database.dart';
 import '../../domain/entities/issue_comment_entity.dart';
 
-/// Data model for Issue Comment with converters between DB, JSON, and Entity.
+/// Data model for Issue Comment with converters between JSON and Entity.
+/// Simplified to remove database dependencies (remote-only mode).
 class IssueCommentModel {
   final String id;
   final String issueLocalId;
@@ -25,48 +23,20 @@ class IssueCommentModel {
     required this.status,
   });
 
-  /// Convert from Drift database row to model.
-  factory IssueCommentModel.fromDb(IssueComment dbRow) {
-    return IssueCommentModel(
-      id: dbRow.id,
-      issueLocalId: dbRow.issueLocalId,
-      authorId: dbRow.authorId,
-      body: dbRow.body,
-      createdAt: dbRow.createdAt,
-      serverId: dbRow.serverId,
-      serverCreatedAt: dbRow.serverCreatedAt,
-      status: dbRow.status,
-    );
-  }
-
-  /// Convert to Drift companion for insert/update.
-  IssueCommentsCompanion toCompanion() {
-    return IssueCommentsCompanion(
-      id: Value(id),
-      issueLocalId: Value(issueLocalId),
-      authorId: Value(authorId),
-      body: Value(body),
-      createdAt: Value(createdAt),
-      serverId: Value(serverId),
-      serverCreatedAt: Value(serverCreatedAt),
-      status: Value(status),
-    );
-  }
-
   /// Convert from JSON (server response).
   factory IssueCommentModel.fromJson(Map<String, dynamic> json) {
     return IssueCommentModel(
-      id: json['id'] ?? '',
-      issueLocalId: json['issue_local_id'] ?? json['issueLocalId'] ?? '',
-      authorId: json['author_id'] ?? json['authorId'] ?? '',
-      body: json['body'] ?? '',
+      id: json['id']?.toString() ?? '',
+      issueLocalId: json['issue_local_id']?.toString() ?? json['issueLocalId']?.toString() ?? json['issue_id']?.toString() ?? '',
+      authorId: json['author_id']?.toString() ?? json['authorId']?.toString() ?? '',
+      body: json['body'] ?? json['content'] ?? '',
       createdAt:
           json['created_at'] ??
           json['createdAt'] ??
           DateTime.now().millisecondsSinceEpoch,
-      serverId: json['server_id'] ?? json['serverId'] ?? json['id'],
+      serverId: json['server_id']?.toString() ?? json['serverId']?.toString() ?? json['id']?.toString(),
       serverCreatedAt: json['server_created_at'] ?? json['serverCreatedAt'],
-      status: json['status'] ?? 'PENDING',
+      status: json['status'] ?? 'SYNCED',
     );
   }
 

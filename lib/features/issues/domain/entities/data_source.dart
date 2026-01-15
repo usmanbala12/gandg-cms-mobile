@@ -69,6 +69,15 @@ class IssueListResult extends Equatable {
     );
   }
 
+  /// Factory for offline state when device has no connectivity.
+  factory IssueListResult.offline(String message) {
+    return IssueListResult(
+      issues: const [],
+      source: DataSource.local,
+      errorMessage: message,
+    );
+  }
+
   /// Check if data is stale (older than 5 minutes).
   bool get isStale {
     if (lastSyncedAt == null) return true;

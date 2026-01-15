@@ -2,9 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:intl/intl.dart';
 
-import '../../../../core/db/repositories/report_repository.dart';
+import '../../../../core/domain/repository_result.dart';
+import '../../domain/repositories/report_repository.dart';
 import '../../domain/entities/report_entity.dart';
 
 class ReportDetailPage extends StatefulWidget {
@@ -23,45 +23,78 @@ class ReportDetailPage extends StatefulWidget {
 
 class _ReportDetailPageState extends State<ReportDetailPage> {
   late final ReportRepository _repository;
-  late Stream<ReportEntity?> _reportStream;
+  late Future<RepositoryResult<ReportEntity>> _reportFuture;
 
   @override
   void initState() {
     super.initState();
     _repository = GetIt.instance<ReportRepository>();
-    _reportStream = _repository.watchReports(projectId: widget.projectId).map((
-      reports,
-    ) {
-      try {
-        return reports.firstWhere((r) => r.id == widget.reportId);
-      } catch (e) {
-        return null;
-      }
-    });
+    _reportFuture = _repository.getReport(widget.reportId);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Report Details')),
-      body: StreamBuilder<ReportEntity?>(
-        stream: _reportStream,
+      body: FutureBuilder<RepositoryResult<ReportEntity>>(
+        future: _reportFuture,
         builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
 
-          final report = snapshot.data;
-          if (report == null) {
+          final result = snapshot.data;
+          if (result == null) {
             return const Center(child: Text('Report not found'));
           }
 
+          if (result.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                    const SizedBox(height: 16),
+                    Text(
+                      result.message ?? 'Error loading report',
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() {
+                          _reportFuture = _repository.getReport(widget.reportId);
+                        });
+                      },
+                      child: const Text('Try Again'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          final report = result.data;
+          
           return ListView(
             padding: const EdgeInsets.all(16.0),
             children: [
+              if (result.isLocal && result.message != null)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  margin: const EdgeInsets.only(bottom: 16),
+                  color: Colors.orange.shade100,
+                  child: Text(
+                    result.message!,
+                    style: TextStyle(color: Colors.orange.shade900),
+                  ),
+                ),
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -74,7 +107,7 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Date: ${DateFormat.yMMMd().add_jm().format(DateTime.fromMillisecondsSinceEpoch(report.reportDate))}',
+                        'Date: ${report.reportDate}',
                       ),
                       const SizedBox(height: 8),
                       Text('ID: ${report.id}'),
@@ -122,10 +155,6 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                // We need to fetch media details to show them.
-                // But ReportEntity only has mediaIds (JSON string).
-                // We'd need to fetch media from MediaRepository.
-                // For now, just list the IDs.
                 Text('Media IDs: ${report.mediaIds}'),
               ],
             ],

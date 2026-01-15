@@ -13,6 +13,7 @@ class DashboardState extends Equatable {
     this.offline = false,
     this.analyticsStale = false,
     this.requiresReauthentication = false,
+    this.isInitialized = false,
   });
 
   final List<Project> projects;
@@ -24,6 +25,7 @@ class DashboardState extends Equatable {
   final bool offline;
   final bool analyticsStale;
   final bool requiresReauthentication;
+  final bool isInitialized;
 
   DashboardState copyWith({
     List<Project>? projects,
@@ -35,6 +37,7 @@ class DashboardState extends Equatable {
     bool? offline,
     bool? analyticsStale,
     bool? requiresReauthentication,
+    bool? isInitialized,
   }) {
     return DashboardState(
       projects: projects ?? this.projects,
@@ -47,6 +50,7 @@ class DashboardState extends Equatable {
       analyticsStale: analyticsStale ?? this.analyticsStale,
       requiresReauthentication:
           requiresReauthentication ?? this.requiresReauthentication,
+      isInitialized: isInitialized ?? this.isInitialized,
     );
   }
 
@@ -61,5 +65,6 @@ class DashboardState extends Equatable {
     offline,
     analyticsStale,
     requiresReauthentication,
+    isInitialized,
   ];
 }

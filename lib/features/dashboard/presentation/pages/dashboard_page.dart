@@ -23,8 +23,21 @@ class DashboardPage extends StatelessWidget {
   }
 }
 
-class _DashboardView extends StatelessWidget {
+class _DashboardView extends StatefulWidget {
   const _DashboardView();
+
+  @override
+  State<_DashboardView> createState() => _DashboardViewState();
+}
+
+class _DashboardViewState extends State<_DashboardView> {
+  @override
+  void initState() {
+    super.initState();
+    // Trigger initialization when dashboard becomes visible
+    // The guard in init() prevents double initialization
+    context.read<DashboardCubit>().init();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +54,12 @@ class _DashboardView extends StatelessWidget {
         ],
       ),
       body: BlocBuilder<DashboardCubit, DashboardState>(
+        buildWhen: (previous, current) =>
+            previous.analytics != current.analytics ||
+            previous.loading != current.loading ||
+            previous.error != current.error ||
+            previous.offline != current.offline ||
+            previous.requiresReauthentication != current.requiresReauthentication,
         builder: (context, state) {
           if (state.requiresReauthentication) {
             return const _LoginPrompt();
@@ -263,10 +282,12 @@ class _ChartsSection extends StatelessWidget {
               SizedBox(
                 height: 160,
                 child: analytics.reportTrend.isNotEmpty
-                    ? CustomPaint(
-                        painter: _LineChartPainter(
-                          analytics.reportTrend,
-                          color,
+                    ? RepaintBoundary(
+                        child: CustomPaint(
+                          painter: _LineChartPainter(
+                            analytics.reportTrend,
+                            color,
+                          ),
                         ),
                       )
                     : const _EmptyPlaceholder('No timeseries data available'),
@@ -292,10 +313,12 @@ class _ChartsSection extends StatelessWidget {
               SizedBox(
                 height: 160,
                 child: analytics.statusBreakdown.isNotEmpty
-                    ? CustomPaint(
-                        painter: _BarChartPainter(
-                          analytics.statusBreakdown,
-                          color,
+                    ? RepaintBoundary(
+                        child: CustomPaint(
+                          painter: _BarChartPainter(
+                            analytics.statusBreakdown,
+                            color,
+                          ),
                         ),
                       )
                     : const _EmptyPlaceholder('No status data available'),
@@ -345,30 +368,44 @@ class _RecentActivitySection extends StatelessWidget {
 }
 
 class _LineChartPainter extends CustomPainter {
-  _LineChartPainter(this.points, this.color);
+  _LineChartPainter(List<TimeSeriesPoint> points, this.color)
+      : sortedPoints = List<TimeSeriesPoint>.from(points)
+          ..sort((a, b) => a.timestamp.compareTo(b.timestamp)),
+        _linePaint = Paint()
+          ..color = color
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke
+          ..isAntiAlias = true,
+        _axisPaint = Paint()
+          ..color = color.withValues(alpha: 0.2)
+          ..strokeWidth = 1,
+        _dotPaint = Paint()
+          ..color = color
+          ..style = PaintingStyle.fill;
 
-  final List<TimeSeriesPoint> points;
+  final List<TimeSeriesPoint> sortedPoints;
   final Color color;
+  final Paint _linePaint;
+  final Paint _axisPaint;
+  final Paint _dotPaint;
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (points.isEmpty) return;
+    if (sortedPoints.isEmpty) return;
 
-    final sorted = List<TimeSeriesPoint>.from(points)
-      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    final minX = sorted.first.timestamp.millisecondsSinceEpoch.toDouble();
-    final maxX = sorted.last.timestamp.millisecondsSinceEpoch.toDouble();
-    final maxY = sorted
+    final minX = sortedPoints.first.timestamp.millisecondsSinceEpoch.toDouble();
+    final maxX = sortedPoints.last.timestamp.millisecondsSinceEpoch.toDouble();
+    final maxY = sortedPoints
         .map((p) => p.count)
         .reduce(math.max)
         .toDouble()
         .clamp(1, double.infinity);
 
     final path = Path();
-    for (var i = 0; i < sorted.length; i++) {
-      final point = sorted[i];
+    for (var i = 0; i < sortedPoints.length; i++) {
+      final point = sortedPoints[i];
       final x = maxX == minX
-          ? size.width * (sorted.length == 1 ? 0.5 : i / (sorted.length - 1))
+          ? size.width * (sortedPoints.length == 1 ? 0.5 : i / (sortedPoints.length - 1))
           : ((point.timestamp.millisecondsSinceEpoch - minX) / (maxX - minX)) *
                 size.width;
       final normalizedY = point.count / maxY;
@@ -380,77 +417,68 @@ class _LineChartPainter extends CustomPainter {
       }
     }
 
-    final linePaint = Paint()
-      ..color = color
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..isAntiAlias = true;
-
-    final axisPaint = Paint()
-      ..color = color.withOpacity(0.2)
-      ..strokeWidth = 1;
-
     canvas.drawLine(
       Offset(0, size.height - 1),
       Offset(size.width, size.height - 1),
-      axisPaint,
+      _axisPaint,
     );
-    canvas.drawPath(path, linePaint);
+    canvas.drawPath(path, _linePaint);
 
-    final dotPaint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
-
-    for (var i = 0; i < sorted.length; i++) {
-      final point = sorted[i];
+    for (var i = 0; i < sortedPoints.length; i++) {
+      final point = sortedPoints[i];
       final x = maxX == minX
-          ? size.width * (sorted.length == 1 ? 0.5 : i / (sorted.length - 1))
+          ? size.width * (sortedPoints.length == 1 ? 0.5 : i / (sortedPoints.length - 1))
           : ((point.timestamp.millisecondsSinceEpoch - minX) / (maxX - minX)) *
                 size.width;
       final normalizedY = point.count / maxY;
       final y = size.height - (normalizedY * size.height);
-      canvas.drawCircle(Offset(x, y), 3, dotPaint);
+      canvas.drawCircle(Offset(x, y), 3, _dotPaint);
     }
   }
 
   @override
   bool shouldRepaint(covariant _LineChartPainter oldDelegate) {
-    return oldDelegate.points != points || oldDelegate.color != color;
+    return oldDelegate.sortedPoints != sortedPoints || oldDelegate.color != color;
   }
 }
 
 class _BarChartPainter extends CustomPainter {
-  _BarChartPainter(this.segments, this.color);
+  _BarChartPainter(this.segments, this.color)
+      : _barPaint = Paint()
+          ..color = color
+          ..style = PaintingStyle.fill,
+        _axisPaint = Paint()
+          ..color = color.withValues(alpha: 0.2)
+          ..strokeWidth = 1,
+        _maxValue = segments.isEmpty
+            ? 1.0
+            : segments
+                .map((s) => s.count)
+                .reduce(math.max)
+                .toDouble()
+                .clamp(1, double.infinity);
 
   final List<StatusSegment> segments;
   final Color color;
+  final Paint _barPaint;
+  final Paint _axisPaint;
+  final double _maxValue;
 
   @override
   void paint(Canvas canvas, Size size) {
     if (segments.isEmpty) return;
-    final maxValue = segments
-        .map((s) => s.count)
-        .reduce(math.max)
-        .toDouble()
-        .clamp(1, double.infinity);
-    final barWidth = size.width / (segments.length * 2);
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.fill;
 
-    final axisPaint = Paint()
-      ..color = color.withOpacity(0.2)
-      ..strokeWidth = 1;
+    final barWidth = size.width / (segments.length * 2);
 
     canvas.drawLine(
       Offset(0, size.height - 1),
       Offset(size.width, size.height - 1),
-      axisPaint,
+      _axisPaint,
     );
 
     for (var i = 0; i < segments.length; i++) {
       final segment = segments[i];
-      final barHeight = (segment.count / maxValue) * (size.height - 16);
+      final barHeight = (segment.count / _maxValue) * (size.height - 16);
       final left = (i * 2 + 0.5) * barWidth;
       final rect = Rect.fromLTWH(
         left,
@@ -458,7 +486,7 @@ class _BarChartPainter extends CustomPainter {
         barWidth,
         barHeight,
       );
-      canvas.drawRect(rect, paint);
+      canvas.drawRect(rect, _barPaint);
     }
   }
 

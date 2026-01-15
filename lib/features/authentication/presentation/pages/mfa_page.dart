@@ -32,7 +32,7 @@ class _MFAPageState extends State<MFAPage> {
     context.read<AuthBloc>().add(
           MFARequested(
             code: _codeController.text.trim(),
-            mfaToken: widget.mfaToken,
+            mfaTempToken: widget.mfaToken,
           ),
         );
   }

@@ -6,6 +6,7 @@ import '../bloc/auth/auth_event.dart';
 import '../bloc/auth/auth_state.dart';
 import '../widgets/auth_text_field.dart';
 import 'mfa_page.dart';
+import 'forgot_password_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -214,9 +215,7 @@ class _LoginPageState extends State<LoginPage> {
                             child: TextButton(
                               onPressed: isLoading
                                   ? null
-                                  : () {
-                                      // TODO: Navigate to forgot password
-                                    },
+                                  : () => Get.to(() => const ForgotPasswordPage()),
                               child: const Text('Forgot password?'),
                             ),
                           ),

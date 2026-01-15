@@ -8,35 +8,48 @@
 import 'package:field_link/app.dart';
 import 'package:field_link/core/di/injection_container.dart';
 import 'package:field_link/core/services/token_storage_service.dart';
+import 'package:field_link/core/services/token_refresh_service.dart';
 import 'package:field_link/core/utils/biometrics/biometric_auth_service.dart';
 import 'package:field_link/features/authentication/domain/usecases/login_usecase.dart';
 import 'package:field_link/features/authentication/domain/usecases/logout_usecase.dart';
 import 'package:field_link/features/authentication/domain/usecases/refresh_token_usecase.dart';
 import 'package:field_link/features/authentication/domain/usecases/verify_mfa_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/setup_mfa_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/enable_mfa_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/disable_mfa_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/request_password_reset_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/confirm_password_reset_usecase.dart';
 import 'package:field_link/features/authentication/presentation/bloc/auth/auth_bloc.dart';
 import 'package:field_link/features/authentication/presentation/pages/login_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 class MockLoginUseCase extends Mock implements LoginUseCase {}
-
 class MockLogoutUseCase extends Mock implements LogoutUseCase {}
-
 class MockVerifyMFAUseCase extends Mock implements VerifyMFAUseCase {}
-
 class MockRefreshTokenUseCase extends Mock implements RefreshTokenUseCase {}
-
+class MockSetupMfaUseCase extends Mock implements SetupMfaUseCase {}
+class MockEnableMfaUseCase extends Mock implements EnableMfaUseCase {}
+class MockDisableMfaUseCase extends Mock implements DisableMfaUseCase {}
+class MockRequestPasswordResetUseCase extends Mock implements RequestPasswordResetUseCase {}
+class MockConfirmPasswordResetUseCase extends Mock implements ConfirmPasswordResetUseCase {}
 class MockBiometricAuthService extends Mock implements BiometricAuthService {}
-
 class MockTokenStorageService extends Mock implements TokenStorageService {}
+class MockTokenRefreshService extends Mock implements TokenRefreshService {}
 
 void main() {
   late MockLoginUseCase loginUseCase;
   late MockLogoutUseCase logoutUseCase;
   late MockVerifyMFAUseCase verifyMFAUseCase;
   late MockRefreshTokenUseCase refreshTokenUseCase;
+  late MockSetupMfaUseCase setupMfaUseCase;
+  late MockEnableMfaUseCase enableMfaUseCase;
+  late MockDisableMfaUseCase disableMfaUseCase;
+  late MockRequestPasswordResetUseCase requestPasswordResetUseCase;
+  late MockConfirmPasswordResetUseCase confirmPasswordResetUseCase;
   late MockBiometricAuthService biometricAuthService;
   late MockTokenStorageService tokenStorageService;
+  late MockTokenRefreshService tokenRefreshService;
 
   setUp(() async {
     await sl.reset();
@@ -45,15 +58,27 @@ void main() {
     logoutUseCase = MockLogoutUseCase();
     verifyMFAUseCase = MockVerifyMFAUseCase();
     refreshTokenUseCase = MockRefreshTokenUseCase();
+    setupMfaUseCase = MockSetupMfaUseCase();
+    enableMfaUseCase = MockEnableMfaUseCase();
+    disableMfaUseCase = MockDisableMfaUseCase();
+    requestPasswordResetUseCase = MockRequestPasswordResetUseCase();
+    confirmPasswordResetUseCase = MockConfirmPasswordResetUseCase();
     biometricAuthService = MockBiometricAuthService();
     tokenStorageService = MockTokenStorageService();
+    tokenRefreshService = MockTokenRefreshService();
 
     sl.registerLazySingleton<LoginUseCase>(() => loginUseCase);
     sl.registerLazySingleton<LogoutUseCase>(() => logoutUseCase);
     sl.registerLazySingleton<VerifyMFAUseCase>(() => verifyMFAUseCase);
     sl.registerLazySingleton<RefreshTokenUseCase>(() => refreshTokenUseCase);
+    sl.registerLazySingleton<SetupMfaUseCase>(() => setupMfaUseCase);
+    sl.registerLazySingleton<EnableMfaUseCase>(() => enableMfaUseCase);
+    sl.registerLazySingleton<DisableMfaUseCase>(() => disableMfaUseCase);
+    sl.registerLazySingleton<RequestPasswordResetUseCase>(() => requestPasswordResetUseCase);
+    sl.registerLazySingleton<ConfirmPasswordResetUseCase>(() => confirmPasswordResetUseCase);
     sl.registerLazySingleton<BiometricAuthService>(() => biometricAuthService);
     sl.registerLazySingleton<TokenStorageService>(() => tokenStorageService);
+    sl.registerLazySingleton<TokenRefreshService>(() => tokenRefreshService);
 
     sl.registerFactory<AuthBloc>(
       () => AuthBloc(
@@ -61,8 +86,14 @@ void main() {
         logoutUseCase: sl(),
         verifyMFAUseCase: sl(),
         refreshTokenUseCase: sl(),
+        setupMfaUseCase: sl(),
+        enableMfaUseCase: sl(),
+        disableMfaUseCase: sl(),
+        requestPasswordResetUseCase: sl(),
+        confirmPasswordResetUseCase: sl(),
         biometricAuthService: sl(),
         tokenStorageService: sl(),
+        tokenRefreshService: sl(),
       ),
     );
   });

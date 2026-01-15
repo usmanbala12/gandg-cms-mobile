@@ -1,10 +1,8 @@
 import 'dart:convert';
 
 import 'package:equatable/equatable.dart';
-import 'package:field_link/core/db/app_database.dart';
-import 'package:field_link/core/db/db_utils.dart';
 
-/// Domain representation of the cached dashboard analytics payload.
+/// Domain representation of the dashboard analytics payload.
 /// Provides typed collections for charts and recent activity along with
 /// freshness metadata used by the UI layer.
 class AnalyticsEntity extends Equatable {
@@ -65,35 +63,27 @@ class AnalyticsEntity extends Equatable {
     );
   }
 
-  /// Build an [AnalyticsEntity] from a cached [ProjectAnalytic] row.
-  factory AnalyticsEntity.fromRow(
-    ProjectAnalytic row, {
+  /// Build an [AnalyticsEntity] from remote API response.
+  factory AnalyticsEntity.fromRemote(
+    String projectId,
+    Map<String, dynamic> data, {
     required DateTime now,
-    bool isStale = false,
   }) {
-    final lastSynced = row.lastSynced != null
-        ? DateTime.fromMillisecondsSinceEpoch(row.lastSynced!, isUtc: true)
-        : null;
-
-    final expired = lastSynced == null
-        ? true
-        : now.difference(lastSynced).inMilliseconds > CacheTTL.analyticsTTL;
-
     return AnalyticsEntity(
-      projectId: row.projectId,
-      reportsCount: row.reportsCount,
-      pendingRequests: row.requestsPending,
-      openIssues: row.openIssues,
-      reportTrend: _parseTimeSeries(row.reportsTimeseries),
-      statusBreakdown: _parseStatusDistribution(row.requestsByStatus),
-      recentActivity: _parseRecentActivity(row.recentActivity),
-      lastSyncedAt: lastSynced,
-      isStale: isStale,
-      isExpired: expired,
+      projectId: projectId,
+      reportsCount: _parseInt(data['reportsCount'] ?? data['reports_count'] ?? data['reports']),
+      pendingRequests: _parseInt(data['pendingRequests'] ?? data['requestsPending'] ?? data['pending']),
+      openIssues: _parseInt(data['openIssues'] ?? data['issuesOpen'] ?? data['issues'] ?? data['open_issues']),
+      reportTrend: _parseTimeSeries(data['reportsTimeseries'] ?? data['reports_timeseries'] ?? data['reportTrend']),
+      statusBreakdown: _parseStatusDistribution(data['requestsByStatus'] ?? data['statusCounts'] ?? data['status_counts']),
+      recentActivity: _parseRecentActivity(data['recentActivity'] ?? data['activity']),
+      lastSyncedAt: now,
+      isStale: false,
+      isExpired: false,
     );
   }
 
-  /// Empty placeholder used when no analytics are available locally or remotely.
+  /// Empty placeholder used when no analytics are available.
   factory AnalyticsEntity.empty(String projectId) => AnalyticsEntity(
     projectId: projectId,
     reportsCount: 0,
@@ -107,12 +97,20 @@ class AnalyticsEntity extends Equatable {
     isExpired: true,
   );
 
-  static List<TimeSeriesPoint> _parseTimeSeries(String? jsonString) {
-    if (jsonString == null || jsonString.isEmpty) {
-      return const [];
+  static List<TimeSeriesPoint> _parseTimeSeries(dynamic jsonValue) {
+    if (jsonValue == null) return const [];
+    
+    dynamic decoded = jsonValue;
+    if (jsonValue is String) {
+      if (jsonValue.isEmpty) return const [];
+      try {
+        decoded = jsonDecode(jsonValue);
+      } catch (_) {
+        return const [];
+      }
     }
+    
     try {
-      final decoded = jsonDecode(jsonString);
       if (decoded is List) {
         return decoded
             .map((item) {
@@ -148,12 +146,20 @@ class AnalyticsEntity extends Equatable {
     return const [];
   }
 
-  static List<StatusSegment> _parseStatusDistribution(String? jsonString) {
-    if (jsonString == null || jsonString.isEmpty) {
-      return const [];
+  static List<StatusSegment> _parseStatusDistribution(dynamic jsonValue) {
+    if (jsonValue == null) return const [];
+    
+    dynamic decoded = jsonValue;
+    if (jsonValue is String) {
+      if (jsonValue.isEmpty) return const [];
+      try {
+        decoded = jsonDecode(jsonValue);
+      } catch (_) {
+        return const [];
+      }
     }
+    
     try {
-      final decoded = jsonDecode(jsonString);
       if (decoded is Map) {
         return decoded.entries
             .map(
@@ -183,12 +189,20 @@ class AnalyticsEntity extends Equatable {
     return const [];
   }
 
-  static List<RecentActivityEntry> _parseRecentActivity(String? jsonString) {
-    if (jsonString == null || jsonString.isEmpty) {
-      return const [];
+  static List<RecentActivityEntry> _parseRecentActivity(dynamic jsonValue) {
+    if (jsonValue == null) return const [];
+    
+    dynamic decoded = jsonValue;
+    if (jsonValue is String) {
+      if (jsonValue.isEmpty) return const [];
+      try {
+        decoded = jsonDecode(jsonValue);
+      } catch (_) {
+        return const [];
+      }
     }
+    
     try {
-      final decoded = jsonDecode(jsonString);
       if (decoded is List) {
         return decoded
             .map((item) {
@@ -218,25 +232,15 @@ class AnalyticsEntity extends Equatable {
   }
 
   static int _parseInt(dynamic value) {
-    if (value == null) {
-      return 0;
-    }
-    if (value is int) {
-      return value;
-    }
-    if (value is num) {
-      return value.toInt();
-    }
-    if (value is String) {
-      return int.tryParse(value) ?? 0;
-    }
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? 0;
     return 0;
   }
 
   static DateTime? _parseDate(dynamic value) {
-    if (value == null) {
-      return null;
-    }
+    if (value == null) return null;
     if (value is int) {
       final millis = value > 9999999999 ? value : value * 1000;
       return DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
@@ -249,9 +253,7 @@ class AnalyticsEntity extends Equatable {
     }
     if (value is String) {
       final parsed = DateTime.tryParse(value);
-      if (parsed != null) {
-        return parsed.toUtc();
-      }
+      if (parsed != null) return parsed.toUtc();
     }
     return null;
   }

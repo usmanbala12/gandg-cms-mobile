@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
-import 'package:field_link/core/db/repositories/report_repository.dart';
+import 'package:field_link/features/reports/domain/repositories/report_repository.dart';
 import 'package:field_link/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:logger/logger.dart';
 
@@ -51,24 +51,21 @@ class ReportsCubit extends Cubit<ReportsState> {
       // Cancel existing subscription if any
       await _reportsSubscription?.cancel();
 
-      // Watch reports for real-time updates
-      _reportsSubscription = _repository
-          .watchReports(projectId: projectId)
-          .listen(
-            (reports) {
-              emit(ReportsLoaded(reports: reports));
-            },
-            onError: (error) {
-              _logger.e('Error watching reports: $error');
-              emit(ReportsError(error.toString()));
-            },
-          );
-
-      // Trigger fetch to ensure fresh data
-      await _repository.getReports(
+      // Fetch reports from remote
+      final result = await _repository.getReports(
         projectId: projectId,
         forceRemote: forceRefresh,
       );
+
+      if (result.hasError) {
+        emit(ReportsError(result.message ?? 'Unknown error'));
+      } else {
+        // Emit the fetched reports
+        emit(ReportsLoaded(
+          reports: result.data,
+          message: result.message,
+        ));
+      }
     } catch (e) {
       _logger.e('Error loading reports: $e');
       emit(ReportsError(e.toString()));

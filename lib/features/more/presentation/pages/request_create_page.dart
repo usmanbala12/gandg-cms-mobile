@@ -10,10 +10,7 @@ class RequestCreatePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<RequestCreateCubit>(),
-      child: const _RequestCreateView(),
-    );
+    return const _RequestCreateView();
   }
 }
 

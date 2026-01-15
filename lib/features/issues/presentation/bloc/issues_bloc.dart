@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:meta/meta.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../domain/entities/data_source.dart';
 import '../../domain/entities/issue_entity.dart';
@@ -11,12 +11,65 @@ import '../../domain/repositories/issue_repository.dart';
 part 'issues_event.dart';
 part 'issues_state.dart';
 
+/// Top-level function for compute isolate - must be top-level or static
+List<IssueEntity> _filterIssuesInIsolate(_FilterParams params) {
+  final issues = params.issues;
+  final filters = params.filters;
+
+  if (filters.isEmpty) {
+    return issues;
+  }
+
+  return issues.where((issue) {
+    // Status Filter
+    if (filters.containsKey('status')) {
+      final statusFilter = filters['status'] as String;
+      if (statusFilter != 'All') {
+        final status = issue.status?.toUpperCase() ?? 'OPEN';
+        final filter = statusFilter.toUpperCase().replaceAll(' ', '_');
+        if (status != filter) return false;
+      }
+    }
+
+    // Priority Filter
+    if (filters.containsKey('priority')) {
+      final priorityFilter = filters['priority'] as String;
+      if (priorityFilter != 'All') {
+        final priority = issue.priority?.toUpperCase() ?? 'MEDIUM';
+        final filter = priorityFilter.toUpperCase();
+        if (priority != filter) return false;
+      }
+    }
+
+    // Search Query
+    if (filters.containsKey('search')) {
+      final query = (filters['search'] as String).toLowerCase();
+      if (query.isNotEmpty) {
+        final title = issue.title.toLowerCase();
+        final desc = issue.description?.toLowerCase() ?? '';
+        if (!title.contains(query) && !desc.contains(query)) return false;
+      }
+    }
+
+    return true;
+  }).toList();
+}
+
+/// Parameters for the isolate filter function
+class _FilterParams {
+  final List<IssueEntity> issues;
+  final Map<String, dynamic> filters;
+
+  const _FilterParams({required this.issues, required this.filters});
+}
+
 class IssuesBloc extends Bloc<IssuesEvent, IssuesState> {
   final IssueRepository repository;
   StreamSubscription? _issuesSubscription;
 
   List<IssueEntity> _allIssues = [];
   Map<String, dynamic> _currentFilters = {};
+  String? _lastErrorMessage;
 
   IssuesBloc({required this.repository}) : super(IssuesInitial()) {
     on<LoadIssues>(_onLoadIssues);
@@ -59,66 +112,46 @@ class IssuesBloc extends Bloc<IssuesEvent, IssuesState> {
       // But we can also emit loading state with data source info
       if (result.hasError) {
         emit(IssuesError(result.errorMessage ?? 'Failed to refresh'));
+      } else if (result.errorMessage != null) {
+        _lastErrorMessage = result.errorMessage;
+        await _emitFilteredIssues(emit);
+      } else {
+        _lastErrorMessage = null;
       }
     } catch (e) {
       emit(IssuesError(e.toString()));
     }
   }
 
-  void _onFilterIssues(FilterIssues event, Emitter<IssuesState> emit) {
+  Future<void> _onFilterIssues(
+    FilterIssues event,
+    Emitter<IssuesState> emit,
+  ) async {
     _currentFilters = event.filters;
-    _emitFilteredIssues(emit);
+    await _emitFilteredIssues(emit);
   }
 
-  void _onIssuesUpdated(IssuesUpdated event, Emitter<IssuesState> emit) {
+  Future<void> _onIssuesUpdated(
+    IssuesUpdated event,
+    Emitter<IssuesState> emit,
+  ) async {
     _allIssues = event.issues;
-    _emitFilteredIssues(emit);
+    await _emitFilteredIssues(emit);
   }
 
-  void _emitFilteredIssues(Emitter<IssuesState> emit) {
-    List<IssueEntity> filtered = _allIssues;
-
-    // Apply filters
-    if (_currentFilters.isNotEmpty) {
-      filtered = filtered.where((issue) {
-        // Status Filter
-        if (_currentFilters.containsKey('status')) {
-          final statusFilter = _currentFilters['status'] as String;
-          if (statusFilter != 'All') {
-            final status = issue.status?.toUpperCase() ?? 'OPEN';
-            final filter = statusFilter.toUpperCase().replaceAll(' ', '_');
-            if (status != filter) return false;
-          }
-        }
-
-        // Priority Filter
-        if (_currentFilters.containsKey('priority')) {
-          final priorityFilter = _currentFilters['priority'] as String;
-          if (priorityFilter != 'All') {
-            final priority = issue.priority?.toUpperCase() ?? 'MEDIUM';
-            final filter = priorityFilter.toUpperCase();
-            if (priority != filter) return false;
-          }
-        }
-
-        // Search Query
-        if (_currentFilters.containsKey('search')) {
-          final query = (_currentFilters['search'] as String).toLowerCase();
-          if (query.isNotEmpty) {
-            final title = issue.title.toLowerCase();
-            final desc = issue.description?.toLowerCase() ?? '';
-            if (!title.contains(query) && !desc.contains(query)) return false;
-          }
-        }
-
-        return true;
-      }).toList();
-    }
+  Future<void> _emitFilteredIssues(Emitter<IssuesState> emit) async {
+    // Use compute to offload filtering to a background isolate
+    // This prevents jank when filtering large lists
+    final filtered = await compute(
+      _filterIssuesInIsolate,
+      _FilterParams(issues: _allIssues, filters: _currentFilters),
+    );
 
     emit(
       IssuesLoaded(
         filtered,
         dataSource: DataSource.local, // Stream data is always from local DB
+        errorMessage: _lastErrorMessage,
       ),
     );
   }

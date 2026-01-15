@@ -5,7 +5,6 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart';
 import 'package:field_link/core/db/app_database.dart';
-import 'package:field_link/core/db/daos/analytics_dao.dart';
 import 'package:field_link/core/db/daos/meta_dao.dart';
 import 'package:field_link/core/db/daos/project_dao.dart';
 import 'package:field_link/core/db/db_utils.dart';
@@ -39,10 +38,10 @@ abstract class DashboardRepository {
   Future<void> runSync(String projectId);
 }
 
+/// Simplified DashboardRepository - analytics are remote-only.
 class DashboardRepositoryImpl implements DashboardRepository {
   DashboardRepositoryImpl({
     required ProjectDao projectDao,
-    required AnalyticsDao analyticsDao,
     required MetaDao metaDao,
     required ApiClient apiClient,
     required SyncManager syncManager,
@@ -50,7 +49,6 @@ class DashboardRepositoryImpl implements DashboardRepository {
     required NetworkInfo networkInfo,
     Logger? logger,
   }) : _projectDao = projectDao,
-       _analyticsDao = analyticsDao,
        _metaDao = metaDao,
        _apiClient = apiClient,
        _syncManager = syncManager,
@@ -59,7 +57,6 @@ class DashboardRepositoryImpl implements DashboardRepository {
        _logger = logger ?? Logger();
 
   final ProjectDao _projectDao;
-  final AnalyticsDao _analyticsDao;
   final MetaDao _metaDao;
   final ApiClient _apiClient;
   final SyncManager _syncManager;
@@ -102,21 +99,17 @@ class DashboardRepositoryImpl implements DashboardRepository {
     }
 
     // Validate authentication before making API calls
-    _logger.i('🔐 Checking authentication status before fetching projects...');
     final isAuthenticated = await _tokenStorageService.isAuthenticated();
+    _logger.d('getProjects authentication check: $isAuthenticated');
 
     if (!isAuthenticated) {
-      _logger.w('🚫 User not authenticated - cannot fetch remote projects');
+      _logger.w('User not authenticated - cannot fetch remote projects');
       if (forceRemote || cached.isEmpty) {
         throw DashboardAuthorizationException(
           message:
               'You must be logged in to fetch projects. Please sign in to continue.',
         );
       }
-      // Return cached data if available
-      _logger.i(
-        '📦 Returning ${cached.length} cached projects (user not authenticated)',
-      );
       return RepositoryResult.local(
         cached,
         message: 'Not authenticated. Showing cached data.',
@@ -125,10 +118,10 @@ class DashboardRepositoryImpl implements DashboardRepository {
     }
 
     // Online - fetch from remote
-    _logger.i('🔄 Fetching projects from remote API...');
+    _logger.i('Fetching projects from remote API...');
     try {
       final remote = await _apiClient.fetchProjects();
-      _logger.i('✅ Successfully fetched ${remote.length} projects from remote');
+      _logger.i('Successfully fetched ${remote.length} projects from remote');
 
       final nowMs = now();
       for (final item in remote) {
@@ -160,25 +153,15 @@ class DashboardRepositoryImpl implements DashboardRepository {
       return RepositoryResult.remote(projects, lastSyncedAt: nowMs);
     } on DioException catch (error, stackTrace) {
       final status = error.response?.statusCode;
-      final responseData = error.response?.data;
       _logger.e(
-        '❌ Failed to fetch remote projects (status: $status)',
+        'Failed to fetch remote projects (status: $status)',
         error: error,
         stackTrace: stackTrace,
       );
 
       // Handle authentication/authorization errors
       if (status == 401 || status == 403) {
-        _logger.e(
-          '🚫 Authentication failed: ${status == 401 ? "Token expired or invalid (401)" : "Access forbidden (403)"} ',
-        );
-        if (responseData != null) {
-          _logger.e('Server response: $responseData');
-        }
-
-        // Clear potentially invalid tokens
         await _tokenStorageService.clearTokens();
-
         throw DashboardAuthorizationException(
           message: status == 401
               ? 'Your session has expired. Please sign in again.'
@@ -187,7 +170,6 @@ class DashboardRepositoryImpl implements DashboardRepository {
       }
 
       // Network error or server error - fallback to local
-      _logger.w('Network error fetching projects, falling back to cached data');
       return RepositoryResult.local(
         cached,
         message: 'Network error. Showing cached data.',
@@ -199,8 +181,6 @@ class DashboardRepositoryImpl implements DashboardRepository {
         error: error,
         stackTrace: stackTrace,
       );
-
-      // Fallback to local
       return RepositoryResult.local(
         cached,
         message: 'Error loading data. Showing cached data.',
@@ -222,93 +202,41 @@ class DashboardRepositoryImpl implements DashboardRepository {
     String projectId, {
     bool forceRefresh = false,
   }) async {
-    final cached = await _analyticsDao.getAnalyticsForProject(projectId);
-    final nowUtc = DateTime.now().toUtc();
-    final nowMs = nowUtc.millisecondsSinceEpoch;
-
-    final lastSynced = cached?.lastSynced ?? 0;
-    final isStale =
-        nowMs - lastSynced > const Duration(hours: 24).inMilliseconds;
-
-    // Check connectivity
     final isOnline = await _networkInfo.isOnline();
-    _logger.d(
-      'getProjectAnalytics: online=$isOnline, forceRefresh=$forceRefresh',
-    );
 
-    // If offline, return cached data
     if (!isOnline) {
-      _logger.i('Device offline, returning cached analytics');
-      if (cached != null) {
-        return RepositoryResult.local(
-          AnalyticsEntity.fromRow(cached, now: nowUtc, isStale: true),
-          message: 'Offline mode. Showing cached data.',
-          lastSyncedAt: lastSynced,
-        );
-      }
+      _logger.i('Device offline, cannot fetch analytics');
       return RepositoryResult.error(
         AnalyticsEntity.empty(projectId),
-        'No cached analytics available offline.',
+        'You are offline. Analytics cannot be loaded.',
       );
     }
 
-    // Validate authentication before making API calls
+    // Validate authentication
     final isAuthenticated = await _tokenStorageService.isAuthenticated();
     if (!isAuthenticated) {
-      _logger.w('⛔ User not authenticated - cannot fetch analytics');
-      if (cached != null) {
-        return RepositoryResult.local(
-          AnalyticsEntity.fromRow(cached, now: nowUtc, isStale: true),
-          message: 'Not authenticated. Showing cached data.',
-          lastSyncedAt: lastSynced,
-        );
-      }
       throw DashboardAuthorizationException(
         message: 'You must be logged in to fetch analytics. Please sign in.',
       );
     }
 
-    // Return cached data if not stale and not forcing refresh
-    if (!forceRefresh && cached != null && !isStale) {
-      _logger.i('📦 Returning fresh cached analytics');
-      return RepositoryResult.local(
-        AnalyticsEntity.fromRow(cached, now: nowUtc, isStale: false),
-        message: 'Showing cached data.',
-        lastSyncedAt: lastSynced,
-      );
-    }
-
-    // Online - fetch from remote
     try {
       final remote = await _apiClient.fetchProjectAnalytics(projectId);
-      final companion = _mapRemoteAnalytics(
-        projectId,
-        remote,
-        existing: cached,
-        nowMs: nowMs,
-      );
-      await _analyticsDao.upsertAnalytics(companion);
-      await _metaDao.setValue('analytics_last_synced_$projectId', '$nowMs');
+      final nowDt = DateTime.now();
 
-      // Run a background sync cycle to keep related data fresh.
+      final entity = AnalyticsEntity.fromRemote(projectId, remote, now: nowDt);
+
+      // Run a background sync cycle
       unawaited(_syncManager.runSyncCycle(projectId: projectId));
 
-      // Fetch the persisted row to return
-      final updatedRow = await _analyticsDao.getAnalyticsForProject(projectId);
       return RepositoryResult.remote(
-        AnalyticsEntity.fromRow(updatedRow!, now: nowUtc),
-        lastSyncedAt: nowMs,
+        entity,
+        lastSyncedAt: nowDt.millisecondsSinceEpoch,
       );
-    } on DioException catch (error, stackTrace) {
+    } on DioException catch (error) {
       final status = error.response?.statusCode;
-      _logger.e(
-        '❌ Analytics fetch failed for project $projectId (status: $status)',
-        error: error,
-        stackTrace: stackTrace,
-      );
 
       if (status == 401 || status == 403) {
-        _logger.e('🚫 Authentication failed while fetching analytics');
         await _tokenStorageService.clearTokens();
         throw DashboardAuthorizationException(
           message: status == 401
@@ -317,80 +245,23 @@ class DashboardRepositoryImpl implements DashboardRepository {
         );
       }
 
-      // Network error - fallback to cached
-      if (_isConnectivityError(error)) {
-        _logger.w(
-          'Network error fetching analytics, falling back to cached data',
-        );
-        if (cached != null) {
-          return RepositoryResult.local(
-            AnalyticsEntity.fromRow(cached, now: nowUtc, isStale: true),
-            message: 'Network error. Showing cached data.',
-            lastSyncedAt: lastSynced,
-          );
-        }
-        return RepositoryResult.error(
-          AnalyticsEntity.empty(projectId),
-          'Network error and no cached data available.',
-        );
-      }
-
-      // Other errors - fallback to cached
-      if (cached != null) {
-        return RepositoryResult.local(
-          AnalyticsEntity.fromRow(cached, now: nowUtc, isStale: true),
-          message: 'Server error. Showing cached data.',
-          lastSyncedAt: lastSynced,
-        );
-      }
-      throw DashboardRepositoryException(
-        message: error.message ?? 'Unknown error',
-      );
-    } on SocketException catch (error, stackTrace) {
-      _logger.w(
-        'Socket error fetching analytics',
-        error: error,
-        stackTrace: stackTrace,
-      );
-      if (cached != null) {
-        return RepositoryResult.local(
-          AnalyticsEntity.fromRow(cached, now: nowUtc, isStale: true),
-          message: 'Connection error. Showing cached data.',
-          lastSyncedAt: lastSynced,
-        );
-      }
       return RepositoryResult.error(
         AnalyticsEntity.empty(projectId),
-        'Connection error and no cached data available.',
+        'Network error loading analytics.',
       );
-    } catch (error, stackTrace) {
-      _logger.e(
-        'Unexpected analytics fetch failure',
-        error: error,
-        stackTrace: stackTrace,
+    } catch (error) {
+      _logger.e('Error fetching analytics: $error');
+      return RepositoryResult.error(
+        AnalyticsEntity.empty(projectId),
+        'Error loading analytics.',
       );
-      if (cached != null) {
-        return RepositoryResult.local(
-          AnalyticsEntity.fromRow(cached, now: nowUtc, isStale: true),
-          message: 'Error loading data. Showing cached data.',
-          lastSyncedAt: lastSynced,
-        );
-      }
-      throw DashboardRepositoryException(message: error.toString());
     }
   }
 
   @override
   Stream<AnalyticsEntity?> watchAnalytics(String projectId) {
-    return _analyticsDao.watchAnalyticsForProject(projectId).map((row) {
-      if (row == null) return null;
-      final nowUtc = DateTime.now().toUtc();
-      final isStale = row.lastSynced == null
-          ? true
-          : nowUtc.millisecondsSinceEpoch - row.lastSynced! >
-                const Duration(hours: 24).inMilliseconds;
-      return AnalyticsEntity.fromRow(row, now: nowUtc, isStale: isStale);
-    });
+    // Remote-only: no local stream
+    return Stream.value(null);
   }
 
   @override
@@ -398,80 +269,9 @@ class DashboardRepositoryImpl implements DashboardRepository {
     return _syncManager.runSyncCycle(projectId: projectId);
   }
 
-  ProjectAnalyticsCompanion _mapRemoteAnalytics(
-    String projectId,
-    Map<String, dynamic> payload, {
-    required int nowMs,
-    ProjectAnalytic? existing,
-  }) {
-    final reportsCount = _extractInt(payload, const [
-      'reportsCount',
-      'reports_count',
-      'reports',
-    ]);
-    final pendingRequests = _extractInt(payload, const [
-      'pendingRequests',
-      'requestsPending',
-      'pending',
-      'totalPending',
-      'pending_requests',
-    ]);
-    final openIssues = _extractInt(payload, const [
-      'openIssues',
-      'issuesOpen',
-      'issues',
-      'open_issues',
-    ]);
-
-    final reportsTrend =
-        payload['reportsTimeseries'] ??
-        payload['reports_timeseries'] ??
-        payload['reportTrend'];
-    final statusBreakdown =
-        payload['requestsByStatus'] ??
-        payload['statusCounts'] ??
-        payload['status_counts'];
-    final activity = payload['recentActivity'] ?? payload['activity'];
-
-    return ProjectAnalyticsCompanion.insert(
-      projectId: projectId,
-      reportsCount: Value(reportsCount),
-      requestsPending: Value(pendingRequests),
-      openIssues: Value(openIssues),
-      reportsTimeseries: Value(_encodeJson(reportsTrend)),
-      requestsByStatus: Value(_encodeJson(statusBreakdown)),
-      recentActivity: Value(_encodeJson(activity)),
-      lastSynced: Value(nowMs),
-      createdAt: existing?.createdAt ?? nowMs,
-      updatedAt: nowMs,
-    );
-  }
-
-  static bool _isConnectivityError(Object error) {
-    if (error is DioException) {
-      return error.type == DioExceptionType.connectionError ||
-          error.type == DioExceptionType.connectionTimeout ||
-          error.type == DioExceptionType.sendTimeout ||
-          error.type == DioExceptionType.receiveTimeout;
-    }
-    return error is SocketException;
-  }
-
-  static String? _encodeJson(dynamic value) {
-    if (value == null) return null;
-    if (value is String) return value;
-    try {
-      return jsonEncode(value);
-    } catch (_) {
-      return value.toString();
-    }
-  }
-
   static String? _encodeString(dynamic value) {
     if (value == null) return null;
-    if (value is String) {
-      return value;
-    }
+    if (value is String) return value;
     return value.toString();
   }
 

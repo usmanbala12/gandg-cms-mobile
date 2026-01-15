@@ -97,22 +97,21 @@ class ApiClient {
   /// Create a new report on the server.
   /// TODO: Adjust payload and response shape based on actual backend contract.
   Future<Map<String, dynamic>> createReport(
-    String projectId,
     Map<String, dynamic> payload,
   ) async {
     try {
       final response = await dio.post(
-        '/api/v1/projects/$projectId/reports',
+        '/api/v1/reports',
         data: payload,
       );
-      logger.i('Created report in project $projectId: ${response.statusCode}');
+      logger.i('Created report: ${response.statusCode}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         return response.data is Map ? response.data : {};
       }
       return {};
     } catch (e) {
-      logger.e('Error creating report in project $projectId: $e');
+      logger.e('Error creating report: $e');
       rethrow;
     }
   }
@@ -120,17 +119,16 @@ class ApiClient {
   /// Update an existing report on the server.
   /// TODO: Adjust payload and response shape based on actual backend contract.
   Future<Map<String, dynamic>> updateReport(
-    String projectId,
     String reportId,
     Map<String, dynamic> payload,
   ) async {
     try {
       final response = await dio.put(
-        '/api/v1/projects/$projectId/reports/$reportId',
+        '/api/v1/reports/$reportId',
         data: payload,
       );
       logger.i(
-        'Updated report $reportId in project $projectId: ${response.statusCode}',
+        'Updated report $reportId: ${response.statusCode}',
       );
 
       if (response.statusCode == 200) {
@@ -138,7 +136,7 @@ class ApiClient {
       }
       return {};
     } catch (e) {
-      logger.e('Error updating report $reportId in project $projectId: $e');
+      logger.e('Error updating report $reportId: $e');
       rethrow;
     }
   }
@@ -218,27 +216,6 @@ class ApiClient {
     }
   }
 
-  /// Download changes from server since a given timestamp.
-  /// TODO: Adjust response shape based on actual backend contract.
-  Future<Map<String, dynamic>> syncDownload(String projectId, int since) async {
-    try {
-      final response = await dio.get(
-        '/api/v1/sync/download',
-        queryParameters: {'project_id': projectId, 'since': since},
-      );
-      logger.i(
-        'Downloaded sync data for project $projectId: ${response.statusCode}',
-      );
-
-      if (response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
-      }
-      return {};
-    } catch (e) {
-      logger.e('Error downloading sync data for project $projectId: $e');
-      rethrow;
-    }
-  }
 
   /// Fetch unresolved sync conflicts for a project.
   /// TODO: Adjust response shape based on actual backend contract.
@@ -445,6 +422,83 @@ class ApiClient {
     }
   }
 
+  /// Fetch a single issue by ID.
+  Future<Map<String, dynamic>> fetchIssue(String issueId) async {
+    try {
+      final response = await dio.get('/api/v1/issues/$issueId');
+      logger.i('Fetched issue $issueId: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map && data['data'] is Map) {
+          return Map<String, dynamic>.from(data['data']);
+        } else if (data is Map) {
+          return Map<String, dynamic>.from(data);
+        }
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error fetching issue $issueId: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch comments for an issue.
+  Future<List<Map<String, dynamic>>> fetchIssueComments(String issueId) async {
+    try {
+      final response = await dio.get('/api/v1/issues/$issueId/comments');
+      logger.i('Fetched comments for issue $issueId: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        if (data is Map && data['data'] is List) {
+          return List<Map<String, dynamic>>.from(data['data']);
+        } else if (data is List) {
+          return List<Map<String, dynamic>>.from(data);
+        }
+      }
+      return [];
+    } catch (e) {
+      logger.e('Error fetching comments for issue $issueId: $e');
+      rethrow;
+    }
+  }
+
+  /// Upload media for an issue.
+  Future<Map<String, dynamic>> uploadIssueMedia(
+    String issueId,
+    String filePath, {
+    String? mimeType,
+  }) async {
+    try {
+      final file = await MultipartFile.fromFile(
+        filePath,
+        filename: filePath.split('/').last,
+        contentType: mimeType != null ? DioMediaType.parse(mimeType) : null,
+      );
+
+      final formData = FormData.fromMap({
+        'file': file,
+        'parent_type': 'issue',
+        'parent_id': issueId,
+      });
+
+      final response = await dio.post(
+        '/api/v1/issues/$issueId/media',
+        data: formData,
+      );
+      logger.i('Uploaded media for issue $issueId: ${response.statusCode}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return response.data is Map ? Map<String, dynamic>.from(response.data) : {};
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error uploading media for issue $issueId: $e');
+      rethrow;
+    }
+  }
+
   /// Fetch issues for a project.
   /// TODO: Adjust response shape based on actual backend contract.
   Future<List<Map<String, dynamic>>> fetchProjectIssues(
@@ -551,13 +605,13 @@ class ApiClient {
   /// TODO: Adjust response shape based on actual backend contract.
   Future<List<Map<String, dynamic>>> fetchProjectReports(
     String projectId, {
-    int limit = 50,
-    int offset = 0,
+    int page = 0,
+    int size = 10,
   }) async {
     try {
       final response = await dio.get(
         '/api/v1/projects/$projectId/reports',
-        queryParameters: {'limit': limit, 'offset': offset},
+        queryParameters: {'page': page, 'size': size},
       );
       logger.i(
         'Fetched reports for project $projectId: ${response.statusCode}',
@@ -586,15 +640,14 @@ class ApiClient {
   /// Fetch a single report.
   /// TODO: Adjust response shape based on actual backend contract.
   Future<Map<String, dynamic>> fetchReport(
-    String projectId,
     String reportId,
   ) async {
     try {
       final response = await dio.get(
-        '/api/v1/projects/$projectId/reports/$reportId',
+        '/api/v1/reports/$reportId',
       );
       logger.i(
-        'Fetched report $reportId for project $projectId: ${response.statusCode}',
+        'Fetched report $reportId: ${response.statusCode}',
       );
 
       if (response.statusCode == 200) {
@@ -602,7 +655,7 @@ class ApiClient {
       }
       return {};
     } catch (e) {
-      logger.e('Error fetching report $reportId for project $projectId: $e');
+      logger.e('Error fetching report $reportId: $e');
       rethrow;
     }
   }

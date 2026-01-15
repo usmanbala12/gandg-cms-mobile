@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 import '../services/token_storage_service.dart';
+import '../../features/authentication/data/models/auth_response_model.dart';
 
 class AuthInterceptor extends Interceptor {
   final TokenStorageService tokenStorageService;
@@ -9,6 +11,9 @@ class AuthInterceptor extends Interceptor {
 
   // Flag to prevent infinite refresh loops
   bool _isRefreshing = false;
+  
+  // Queue for requests waiting for token refresh
+  final List<_QueuedRequest> _queue = [];
 
   AuthInterceptor({required this.tokenStorageService, required this.dio});
 
@@ -19,31 +24,26 @@ class AuthInterceptor extends Interceptor {
   ) async {
     try {
       // Skip adding token for auth endpoints
-      if (options.path.contains('/auth/')) {
-        _logger.d(
-          '🔓 [AuthInterceptor] Skipping token for auth endpoint: ${options.path}',
-        );
+      final publicEndpoints = [
+        '/auth/login',
+        '/auth/refresh',
+        '/auth/password-reset/',
+        '/auth/mfa/verify', // MFA verification uses temp token, handled explicitly in datasource
+      ];
+
+      if (publicEndpoints.any((e) => options.path.contains(e))) {
+        _logger.d('🔓 [AuthInterceptor] Skipping token for public endpoint: ${options.path}');
         return handler.next(options);
       }
-
-      _logger.d('🔐 [AuthInterceptor] Processing request to: ${options.path}');
 
       // Get access token and add to headers
       final accessToken = await tokenStorageService.getAccessToken();
       if (accessToken != null && accessToken.isNotEmpty) {
         options.headers['Authorization'] = 'Bearer $accessToken';
-        final tokenPreview = accessToken.length > 10
-            ? '${accessToken.substring(0, 10)}...'
-            : accessToken;
-        _logger.d(
-          '✅ [AuthInterceptor] Added Authorization header: Bearer $tokenPreview',
-        );
+        final tokenPreview = accessToken.length > 8 ? '${accessToken.substring(0, 8)}...' : 'short';
+        _logger.d('🔑 [AuthInterceptor] Added token ($tokenPreview) to ${options.path}');
       } else {
-        // Log warning if no token is available for protected endpoint
-        _logger.w(
-          '⚠️ [AuthInterceptor] WARNING: No access token available for ${options.path}',
-        );
-        _logger.w('   This request will likely fail with 401 Unauthorized');
+        _logger.w('⚠️ [AuthInterceptor] NO TOKEN for ${options.path}');
       }
 
       return handler.next(options);
@@ -54,45 +54,42 @@ class AuthInterceptor extends Interceptor {
   }
 
   @override
-  Future<void> onResponse(
-    Response response,
-    ResponseInterceptorHandler handler,
-  ) async {
-    return handler.next(response);
-  }
-
-  @override
   Future<void> onError(
     DioException err,
     ErrorInterceptorHandler handler,
   ) async {
     final statusCode = err.response?.statusCode;
+    _logger.e('❌ [AuthInterceptor] onError: ${err.requestOptions.path} (status: $statusCode)');
 
-    // Handle both 401 Unauthorized and 403 Forbidden
-    if (statusCode == 401 || statusCode == 403) {
-      _logger.w(
-        '🛑 [AuthInterceptor] Caught $statusCode for ${err.requestOptions.path}',
-      );
-
-      // Don't retry refresh endpoint itself
-      if (err.requestOptions.path.contains('/auth/refresh')) {
-        _logger.e('❌ [AuthInterceptor] Refresh endpoint failed. Cannot retry.');
+    // Handle 401 Unauthorized
+    if (statusCode == 401) {
+      // Don't retry refresh or login endpoints
+      if (err.requestOptions.path.contains('/auth/login') ||
+          err.requestOptions.path.contains('/auth/refresh')) {
+        await tokenStorageService.triggerLogout();
         return handler.next(err);
       }
 
-      // If already refreshing, queue the request (simple retry for now)
+      // If this request was already retried, don't try again
+      final retryCount = err.requestOptions.extra['retry_count'] as int? ?? 0;
+      if (retryCount >= 1) {
+        _logger.e('🛑 [AuthInterceptor] Max retries reached for ${err.requestOptions.path}. Clearing tokens and logging out.');
+        await tokenStorageService.triggerLogout();
+        return handler.next(err);
+      }
+
+      // If already refreshing, queue the request
       if (_isRefreshing) {
-        _logger.i(
-          '⏳ [AuthInterceptor] Refresh already in progress. Retrying request...',
-        );
+        _logger.i('⏳ [AuthInterceptor] Already refreshing, queuing: ${err.requestOptions.path}');
+        final completer = Completer<Response>();
+        _queue.add(_QueuedRequest(err.requestOptions, completer));
+        
         try {
-          // Wait a bit and retry (basic handling, ideally use a queue)
-          await Future.delayed(const Duration(milliseconds: 1000));
-          await _retryRequest(err.requestOptions, handler);
+          final response = await completer.future;
+          return handler.resolve(response);
         } catch (e) {
           return handler.next(err);
         }
-        return;
       }
 
       _isRefreshing = true;
@@ -101,83 +98,49 @@ class AuthInterceptor extends Interceptor {
       try {
         final refreshToken = await tokenStorageService.getRefreshToken();
         if (refreshToken == null || refreshToken.isEmpty) {
-          _logger.w(
-            '⚠️ [AuthInterceptor] No refresh token available. Aborting refresh.',
-          );
+          _logger.w('⚠️ [AuthInterceptor] No refresh token available');
           _isRefreshing = false;
+          _clearQueue(err);
           return handler.next(err);
         }
 
         // Attempt to refresh token
         final response = await dio.post(
           '/api/v1/auth/refresh',
-          data: {'refresh_token': refreshToken},
-          options: Options(headers: {'Content-Type': 'application/json'}),
-        );
-
-        _logger.i(
-          '✅ [AuthInterceptor] Refresh response: ${response.statusCode}',
+          data: {'refreshToken': refreshToken},
         );
 
         if (response.statusCode == 200) {
+          _logger.i('✅ [AuthInterceptor] Token refresh successful');
           final root = response.data as Map<String, dynamic>;
-          // Handle potential data wrapper
-          final data = root.containsKey('data')
-              ? (root['data'] as Map<String, dynamic>? ?? root)
-              : root;
-
-          // Check for both snake_case (standard) and camelCase (potential legacy)
-          final newAccessToken =
-              data['access_token'] as String? ?? data['accessToken'] as String?;
-          final newRefreshToken = data['refresh_token'] as String? ??
-              data['refreshToken'] as String?;
-
-          if (newAccessToken != null && newRefreshToken != null) {
-            _logger.i(
-              '✅ [AuthInterceptor] Tokens refreshed successfully. Saving...',
-            );
-            // Save new tokens
-            await tokenStorageService.saveTokens(
-              accessToken: newAccessToken,
-              refreshToken: newRefreshToken,
-            );
-
-            // Update original request with new token
-            err.requestOptions.headers['Authorization'] =
-                'Bearer $newAccessToken';
-
+          final data = root.containsKey('data') ? root['data'] : root;
+          
+          final authResponse = AuthResponseModel.fromJson(data);
+          
+          if (authResponse.accessToken != null) {
+            await tokenStorageService.saveAuthResponse(authResponse);
+            
             _isRefreshing = false;
-
-            _logger.i(
-              '🔄 [AuthInterceptor] Retrying original request: ${err.requestOptions.path}',
-            );
-            // Retry original request
-            return handler.resolve(
-              await dio.request(
-                err.requestOptions.path,
-                options: Options(
-                  method: err.requestOptions.method,
-                  headers: err.requestOptions.headers,
-                ),
-                data: err.requestOptions.data,
-                queryParameters: err.requestOptions.queryParameters,
-              ),
-            );
-          } else {
-            _logger.e('❌ [AuthInterceptor] Refresh response missing tokens.');
-            _logger.e('   Response keys: ${data.keys.toList()}');
+            
+            // Retry the original request
+            final retryResponse = await _retryRequest(err.requestOptions);
+            
+            // Process the queue
+            _processQueue();
+            
+            return handler.resolve(retryResponse);
           }
-        } else {
-          _logger.e(
-            '❌ [AuthInterceptor] Refresh failed with status: ${response.statusCode}',
-          );
         }
-
+        
+        _logger.e('❌ [AuthInterceptor] Refresh failed (status: ${response.statusCode})');
         _isRefreshing = false;
+        _clearQueue(err);
         return handler.next(err);
       } catch (e) {
         _logger.e('❌ [AuthInterceptor] Exception during refresh: $e');
         _isRefreshing = false;
+        _clearQueue(err);
+        await tokenStorageService.triggerLogout();
         return handler.next(err);
       }
     }
@@ -185,32 +148,57 @@ class AuthInterceptor extends Interceptor {
     return handler.next(err);
   }
 
-  /// Retry queued request with new token
-  Future<void> _retryRequest(
-    RequestOptions requestOptions,
-    ErrorInterceptorHandler handler,
-  ) async {
-    try {
-      final accessToken = await tokenStorageService.getAccessToken();
-      if (accessToken != null) {
-        requestOptions.headers['Authorization'] = 'Bearer $accessToken';
+  /// Retry a single request with the latest token
+  Future<Response> _retryRequest(RequestOptions requestOptions) async {
+    final accessToken = await tokenStorageService.getAccessToken();
+    
+    // Increment retry count
+    final retryCount = (requestOptions.extra['retry_count'] as int? ?? 0) + 1;
+    final extra = Map<String, dynamic>.from(requestOptions.extra)
+      ..['retry_count'] = retryCount;
 
-        final response = await dio.request(
-          requestOptions.path,
-          options: Options(
-            method: requestOptions.method,
-            headers: requestOptions.headers,
-          ),
-          data: requestOptions.data,
-          queryParameters: requestOptions.queryParameters,
-        );
-        return handler.resolve(response);
-      } else {
-        // If still no token, just pass the error? Or try original request?
-        // For now, we can't really do much without a token.
-      }
-    } catch (e) {
-      // If retry fails, we can't do much
-    }
+    final options = Options(
+      method: requestOptions.method,
+      headers: Map<String, dynamic>.from(requestOptions.headers)
+        ..['Authorization'] = 'Bearer $accessToken',
+      extra: extra,
+    );
+
+    _logger.i('🔁 [AuthInterceptor] Retrying ${requestOptions.path} (attempt $retryCount)');
+
+    return dio.request(
+      requestOptions.path,
+      options: options,
+      data: requestOptions.data,
+      queryParameters: requestOptions.queryParameters,
+    );
   }
+
+  /// Process all queued requests after successful token refresh
+  void _processQueue() async {
+    for (final request in _queue) {
+      try {
+        final response = await _retryRequest(request.options);
+        request.completer.complete(response);
+      } catch (e) {
+        request.completer.completeError(e);
+      }
+    }
+    _queue.clear();
+  }
+
+  /// Reject all queued requests if refresh fails
+  void _clearQueue(DioException originalError) {
+    for (final request in _queue) {
+      request.completer.completeError(originalError);
+    }
+    _queue.clear();
+  }
+}
+
+class _QueuedRequest {
+  final RequestOptions options;
+  final Completer<Response> completer;
+
+  _QueuedRequest(this.options, this.completer);
 }

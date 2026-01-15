@@ -31,6 +31,43 @@ class IssueRemoteDataSource {
     }
   }
 
+  /// Fetch a single issue by ID.
+  Future<Map<String, dynamic>> fetchIssue(String issueId) async {
+    try {
+      return await apiClient.fetchIssue(issueId);
+    } catch (e) {
+      logger.e('Error fetching issue: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch comments for an issue.
+  Future<List<Map<String, dynamic>>> fetchIssueComments(String issueId) async {
+    try {
+      return await apiClient.fetchIssueComments(issueId);
+    } catch (e) {
+      logger.e('Error fetching issue comments: $e');
+      rethrow;
+    }
+  }
+
+  /// Upload media for an issue (alias for uploadMedia with issue type).
+  Future<Map<String, dynamic>> uploadIssueMedia(
+    String issueId,
+    String filePath, {
+    String? mimeType,
+  }) async {
+    try {
+      // Get project ID first if needed, or use a placeholder
+      final response = await apiClient.uploadIssueMedia(issueId, filePath, mimeType: mimeType);
+      logger.i('Issue media uploaded successfully');
+      return response;
+    } catch (e) {
+      logger.e('Error uploading issue media: $e');
+      rethrow;
+    }
+  }
+
   /// Create a new issue on the server.
   Future<Map<String, dynamic>> createIssue(
     String projectId,

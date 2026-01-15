@@ -7,8 +7,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../../core/db/app_database.dart';
-import '../../../../core/db/daos/conflict_dao.dart';
-import '../../../../core/db/daos/media_dao.dart';
 import '../../../../core/db/daos/meta_dao.dart';
 import '../../../../core/db/daos/sync_queue_dao.dart';
 import '../../../../core/db/daos/user_dao.dart';
@@ -24,15 +22,14 @@ import '../datasources/profile_remote_datasource.dart';
 import '../models/user_preferences_model.dart';
 import '../models/user_profile_model.dart';
 
+/// Simplified ProfileRepository - removed unused DAO dependencies
 class ProfileRepositoryImpl implements ProfileRepository {
   final ProfileRemoteDataSource remoteDataSource;
   final NetworkInfo networkInfo;
   final SharedPreferences sharedPreferences;
   final SyncManager syncManager;
   final SyncQueueDao syncQueueDao;
-  final ConflictDao conflictDao;
   final MetaDao metaDao;
-  final MediaDao mediaDao;
   final UserDao userDao;
   final AppDatabase db;
   final Logger logger;
@@ -46,9 +43,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     required this.sharedPreferences,
     required this.syncManager,
     required this.syncQueueDao,
-    required this.conflictDao,
     required this.metaDao,
-    required this.mediaDao,
     required this.userDao,
     required this.db,
     Logger? logger,
@@ -58,8 +53,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
   Future<RepositoryResult<UserProfileEntity>> getUserProfile({
     bool forceRemote = false,
   }) async {
-    // User profile comes from login response stored in UserDao.
-    // No remote /me endpoint call is needed.
     logger.d('getUserProfile: Reading user from local DB (UserDao)');
 
     try {
@@ -98,7 +91,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Stream<UserProfileEntity?> watchUserProfile() {
-    // Watch user profile changes from UserDao (reactive Drift stream)
     return userDao.watchCurrentUser().map((userTableData) {
       if (userTableData != null) {
         return UserProfileModel.fromDrift(userTableData);
@@ -141,42 +133,31 @@ class ProfileRepositoryImpl implements ProfileRepository {
         logger.i('Successfully synced preferences to server');
       } catch (e) {
         logger.w('Failed to sync preferences to server: $e');
-        // Enqueue for later sync
-        await syncQueueDao.enqueue(
-          SyncQueueCompanion.insert(
-            id: const Uuid().v4(),
-            projectId: '', // Preferences are user-level, not project-specific
-            entityType: 'user_preferences',
-            entityId: 'current_user',
-            action: 'update',
-            payload: Value(jsonEncode(model.toJson())),
-            status: const Value('PENDING'),
-            createdAt: DateTime.now().millisecondsSinceEpoch,
-          ),
-        );
-        logger.i('Enqueued preferences update for later sync');
+        await _enqueuePreferencesUpdate(model);
       }
     } else {
-      // Offline - enqueue for later sync
-      await syncQueueDao.enqueue(
-        SyncQueueCompanion.insert(
-          id: const Uuid().v4(),
-          projectId: '',
-          entityType: 'user_preferences',
-          entityId: 'current_user',
-          action: 'update',
-          payload: Value(jsonEncode(model.toJson())),
-          status: const Value('PENDING'),
-          createdAt: DateTime.now().millisecondsSinceEpoch,
-        ),
-      );
-      logger.i('Device offline, enqueued preferences update for later sync');
+      await _enqueuePreferencesUpdate(model);
     }
+  }
+
+  Future<void> _enqueuePreferencesUpdate(UserPreferencesModel model) async {
+    await syncQueueDao.enqueue(
+      SyncQueueCompanion.insert(
+        id: const Uuid().v4(),
+        projectId: '',
+        entityType: 'user_preferences',
+        entityId: 'current_user',
+        action: 'update',
+        payload: Value(jsonEncode(model.toJson())),
+        status: const Value('PENDING'),
+        createdAt: DateTime.now().millisecondsSinceEpoch,
+      ),
+    );
+    logger.i('Enqueued preferences update for later sync');
   }
 
   @override
   Stream<SyncStatusEntity> watchSyncStatus() async* {
-    // Create a periodic stream that checks sync status
     await for (final _ in Stream.periodic(const Duration(seconds: 2))) {
       final lastSyncStr = await metaDao.getValue(_lastSyncKey);
       final lastSyncMs = lastSyncStr != null ? int.tryParse(lastSyncStr) : null;
@@ -185,12 +166,11 @@ class ProfileRepositoryImpl implements ProfileRepository {
           : null;
 
       final pendingCount = await syncQueueDao.pendingCount();
-      final conflicts = await conflictDao.getUnresolvedConflicts();
 
       yield SyncStatusEntity(
         lastFullSyncAt: lastSyncAt,
         pendingQueueCount: pendingCount,
-        conflictCount: conflicts.length,
+        conflictCount: 0, // Conflicts removed in simplified version
       );
     }
   }
@@ -200,7 +180,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
     logger.i('Triggering manual sync cycle');
     await syncManager.runSyncCycle();
 
-    // Update last sync timestamp
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     await metaDao.setValue(_lastSyncKey, nowMs.toString());
     logger.i('Manual sync completed');
@@ -210,59 +189,44 @@ class ProfileRepositoryImpl implements ProfileRepository {
   Future<StorageStatsEntity> getStorageStats() async {
     logger.i('Calculating storage statistics');
 
-    // Get record counts by table
     final recordsByTable = <String, int>{};
 
-    // Count records in key tables
-    final issuesCount = await db
-        .customSelect(
-          'SELECT COUNT(*) as count FROM issues',
-        )
-        .getSingle();
-    recordsByTable['issues'] = issuesCount.read<int>('count');
+    // Count records in remaining tables
+    try {
+      final requestsCount = await db
+          .customSelect('SELECT COUNT(*) as count FROM requests')
+          .getSingle();
+      recordsByTable['requests'] = requestsCount.read<int>('count');
+    } catch (_) {
+      recordsByTable['requests'] = 0;
+    }
 
-    final reportsCount = await db
-        .customSelect(
-          'SELECT COUNT(*) as count FROM reports',
-        )
-        .getSingle();
-    recordsByTable['reports'] = reportsCount.read<int>('count');
+    try {
+      final queueCount = await db
+          .customSelect('SELECT COUNT(*) as count FROM sync_queue')
+          .getSingle();
+      recordsByTable['sync_queue'] = queueCount.read<int>('count');
+    } catch (_) {
+      recordsByTable['sync_queue'] = 0;
+    }
 
-    final requestsCount = await db
-        .customSelect(
-          'SELECT COUNT(*) as count FROM requests',
-        )
-        .getSingle();
-    recordsByTable['requests'] = requestsCount.read<int>('count');
+    try {
+      final projectsCount = await db
+          .customSelect('SELECT COUNT(*) as count FROM projects')
+          .getSingle();
+      recordsByTable['projects'] = projectsCount.read<int>('count');
+    } catch (_) {
+      recordsByTable['projects'] = 0;
+    }
 
-    final mediaCount = await db
-        .customSelect(
-          'SELECT COUNT(*) as count FROM media_files',
-        )
-        .getSingle();
-    recordsByTable['media'] = mediaCount.read<int>('count');
-
-    // Calculate approximate DB size
-    // This is a rough estimate; for exact size, you'd need to query the file system
     final totalRecords = recordsByTable.values.fold<int>(0, (a, b) => a + b);
-    final dbSizeBytes = totalRecords * 1024; // Rough estimate: 1KB per record
+    final dbSizeBytes = totalRecords * 1024; // Rough estimate
 
-    // Calculate media cache size
-    // Note: We'll sum up all media files across all projects
-    // For a more accurate calculation, you could query the filesystem
-    final mediaSizeResult = await db
-        .customSelect(
-          'SELECT COALESCE(SUM(size), 0) as total FROM media_files',
-        )
-        .getSingle();
-    final mediaSizeBytes = mediaSizeResult.read<int>('total');
-
-    logger
-        .i('Storage stats: DB=$dbSizeBytes bytes, Media=$mediaSizeBytes bytes');
+    logger.i('Storage stats: DB=$dbSizeBytes bytes');
 
     return StorageStatsEntity(
       dbSizeBytes: dbSizeBytes,
-      mediaSizeBytes: mediaSizeBytes,
+      mediaSizeBytes: 0, // No media cache in simplified version
       recordsByTable: recordsByTable,
     );
   }
@@ -276,21 +240,9 @@ class ProfileRepositoryImpl implements ProfileRepository {
         .millisecondsSinceEpoch;
 
     await db.transaction(() async {
-      // Clear old issues
+      // Clear old completed sync queue items
       await db.customStatement(
-        'DELETE FROM issues WHERE created_at < ? AND sync_status = ?',
-        [thirtyDaysAgo, 'SYNCED'],
-      );
-
-      // Clear old reports
-      await db.customStatement(
-        'DELETE FROM reports WHERE created_at < ?',
-        [thirtyDaysAgo],
-      );
-
-      // Clear old requests
-      await db.customStatement(
-        'DELETE FROM requests WHERE created_at < ?',
+        "DELETE FROM sync_queue WHERE created_at < ? AND status = 'DONE'",
         [thirtyDaysAgo],
       );
 
@@ -300,15 +252,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<void> clearMediaCache() async {
-    logger.i('Clearing media cache');
-
-    await db.transaction(() async {
-      // Delete all media files from DB
-      // Note: This doesn't delete actual files from filesystem
-      // You'd need to implement file deletion separately if needed
-      await db.customStatement('DELETE FROM media_files');
-
-      logger.i('Media cache cleared successfully');
-    });
+    // No media cache in simplified version
+    logger.i('Media cache clearing is a no-op in simplified offline mode');
   }
 }

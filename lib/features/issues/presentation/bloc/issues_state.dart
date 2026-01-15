@@ -23,6 +23,18 @@ class IssuesLoaded extends IssuesState {
     this.errorMessage,
   });
 
+  IssuesLoaded copyWith({
+    List<IssueEntity>? issues,
+    DataSource? dataSource,
+    String? errorMessage,
+  }) {
+    return IssuesLoaded(
+      issues ?? this.issues,
+      dataSource: dataSource ?? this.dataSource,
+      errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
+
   @override
   List<Object?> get props => [issues, dataSource, errorMessage];
 }

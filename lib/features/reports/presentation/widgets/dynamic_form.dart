@@ -5,11 +5,11 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 import 'media_picker_widget.dart';
-import 'template_selector.dart';
+import '../../domain/entities/form_template_entity.dart';
 
 /// Widget that dynamically builds a form based on a template
 class DynamicForm extends StatefulWidget {
-  final FormTemplate template;
+  final FormTemplateEntity template;
   final Map<String, dynamic>? initialValues;
   final ValueChanged<Map<String, dynamic>> onSubmit;
   final VoidCallback? onCancel;
@@ -36,25 +36,26 @@ class _DynamicFormState extends State<DynamicForm> {
     super.initState();
     for (final field in widget.template.fields) {
       // Initialize with provided initial value, default value, or null
-      final initialValue =
-          widget.initialValues?[field.key] ?? field.defaultValue;
+      // FormFieldEntity doesn't have defaultValue property currently in my memory, let's check.
+      // Assuming it doesn't for now, or use null.
+      final initialValue = widget.initialValues?[field.id];
 
-      _formData[field.key] = initialValue;
+      _formData[field.id] = initialValue;
 
       // Create text controllers for fields that need them
-      if (_needsController(field.type)) {
-        _controllers[field.key] = TextEditingController(
+      if (_needsController(field.fieldType)) {
+        _controllers[field.id] = TextEditingController(
           text: initialValue?.toString() ?? '',
         );
       }
 
       // Special handling for location which might have sub-fields
-      if (field.type == 'location') {
+      if (field.fieldType.toUpperCase() == 'LOCATION') {
         final locMap = initialValue as Map<String, dynamic>?;
-        _controllers['${field.key}_lat'] = TextEditingController(
+        _controllers['${field.id}_lat'] = TextEditingController(
           text: locMap?['lat']?.toString() ?? '',
         );
-        _controllers['${field.key}_lng'] = TextEditingController(
+        _controllers['${field.id}_lng'] = TextEditingController(
           text: locMap?['lng']?.toString() ?? '',
         );
       }
@@ -62,7 +63,7 @@ class _DynamicFormState extends State<DynamicForm> {
   }
 
   bool _needsController(String type) {
-    return ['text', 'longtext', 'number'].contains(type);
+    return ['TEXT', 'LONGTEXT', 'NUMBER'].contains(type.toUpperCase());
   }
 
   @override
@@ -73,8 +74,8 @@ class _DynamicFormState extends State<DynamicForm> {
     super.dispose();
   }
 
-  String? _validateField(TemplateFormField field, dynamic value) {
-    if (field.required) {
+  String? _validateField(FormFieldEntity field, dynamic value) {
+    if (field.isRequired) {
       if (value == null ||
           (value is String && value.isEmpty) ||
           (value is List && value.isEmpty) ||
@@ -85,102 +86,97 @@ class _DynamicFormState extends State<DynamicForm> {
 
     // Type-specific validation
     if (value != null && value.toString().isNotEmpty) {
-      switch (field.type) {
-        case 'number':
-          if (double.tryParse(value.toString()) == null) {
-            return 'Please enter a valid number';
-          }
-          break;
-        // Add more type-specific validations as needed
+      final type = field.fieldType.toUpperCase();
+      if (type == 'NUMBER') {
+        if (double.tryParse(value.toString()) == null) {
+          return 'Please enter a valid number';
+        }
       }
     }
 
     return null;
   }
 
-  Widget _buildField(TemplateFormField field) {
-    // print('🔨 Building field: ${field.label} (${field.type})');
+  Widget _buildField(FormFieldEntity field) {
+    // Normalize type to lowercase for case-insensitive comparison
+    final type = field.fieldType.toUpperCase();
 
-    switch (field.type) {
-      case 'text':
+    switch (type) {
+      case 'TEXT':
         return _buildTextField(field, maxLines: 1);
 
-      case 'longtext':
+      case 'LONGTEXT': // Keep for backward compatibility or future use
         return _buildTextField(field, maxLines: 5);
 
-      case 'number':
+      case 'NUMBER':
         return _buildNumberField(field);
 
-      case 'date':
+      case 'DATE':
         return _buildDateField(field);
 
-      case 'select':
+      case 'SELECT':
         return _buildSelectField(field);
 
-      case 'multi_select':
+      case 'MULTISELECT':
+      case 'MULTI_SELECT': // Handle potential variations
         return _buildMultiSelectField(field);
 
-      case 'checkbox':
+      case 'CHECKBOX': // Keep for backward compatibility
         return _buildCheckboxField(field);
 
-      case 'location':
+      case 'LOCATION':
         return _buildLocationField(field);
 
-      case 'media':
+      case 'MEDIA':
+      case 'MEDIA_UPLOAD': // Match API Enum
         return _buildMediaField(field);
 
       default:
-        // Fallback for unknown types
+        // Fallback or check for variations
         print(
-          '⚠️ Unsupported field type: "${field.type}", falling back to text',
+          '⚠️ Unsupported field type: "${field.fieldType}", falling back to text',
         );
         return _buildTextField(field, maxLines: 1);
     }
   }
 
-  Widget _buildTextField(TemplateFormField field, {required int maxLines}) {
-    // Ensure controller exists, fallback if missing (defensive)
-    final controller = _controllers[field.key];
+  Widget _buildTextField(FormFieldEntity field, {required int maxLines}) {
+    final controller = _controllers[field.id];
     if (controller == null) {
-      print('❌ Missing controller for field ${field.key} (${field.type})');
-      // Create a temporary one to prevent crash, but this shouldn't happen if init is correct
       return TextFormField(
-        initialValue: _formData[field.key]?.toString(),
+        initialValue: _formData[field.id]?.toString(),
         decoration: InputDecoration(
-          labelText: field.label + (field.required ? ' *' : ''),
-          hintText: field.placeholder,
+          labelText: field.label + (field.isRequired ? ' *' : ''),
+          // hintText: field.placeholder, // Not in Entity
           border: const OutlineInputBorder(),
           errorText: 'Internal Error: Missing Controller',
         ),
         maxLines: maxLines,
-        onSaved: (value) => _formData[field.key] = value,
+        onSaved: (value) => _formData[field.id] = value,
       );
     }
 
     return TextFormField(
       controller: controller,
       decoration: InputDecoration(
-        labelText: field.label + (field.required ? ' *' : ''),
-        hintText: field.placeholder,
+        labelText: field.label + (field.isRequired ? ' *' : ''),
+        // hintText: field.placeholder, // Not in Entity
         border: const OutlineInputBorder(),
       ),
       maxLines: maxLines,
-      onSaved: (value) => _formData[field.key] = value,
+      onSaved: (value) => _formData[field.id] = value,
       validator: (value) => _validateField(field, value),
     );
   }
 
-  Widget _buildNumberField(TemplateFormField field) {
-    final controller = _controllers[field.key];
+  Widget _buildNumberField(FormFieldEntity field) {
+    final controller = _controllers[field.id];
 
     return TextFormField(
-      controller:
-          controller, // Might be null if type mismatch, handled by defensive check in init?
-      // If controller is null here, it means _needsController returned false but we are here.
-      // _needsController includes 'number', so it should be fine.
+      controller: controller,
       decoration: InputDecoration(
-        labelText: field.label + (field.required ? ' *' : ''),
-        hintText: field.placeholder,
+        labelText: field.label + (field.isRequired ? ' *' : ''),
+        // hintText: field.placeholder, // Not in Entity
         border: const OutlineInputBorder(),
       ),
       keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -189,17 +185,17 @@ class _DynamicFormState extends State<DynamicForm> {
       ],
       onSaved: (value) {
         if (value != null && value.isNotEmpty) {
-          _formData[field.key] = double.tryParse(value) ?? value;
+          _formData[field.id] = double.tryParse(value) ?? value;
         } else {
-          _formData[field.key] = null;
+          _formData[field.id] = null;
         }
       },
       validator: (value) => _validateField(field, value),
     );
   }
 
-  Widget _buildDateField(TemplateFormField field) {
-    final currentValue = _formData[field.key] as DateTime?;
+  Widget _buildDateField(FormFieldEntity field) {
+    final currentValue = _formData[field.id] as DateTime?;
 
     return InkWell(
       onTap: () async {
@@ -212,13 +208,13 @@ class _DynamicFormState extends State<DynamicForm> {
 
         if (picked != null) {
           setState(() {
-            _formData[field.key] = picked;
+            _formData[field.id] = picked;
           });
         }
       },
       child: InputDecorator(
         decoration: InputDecoration(
-          labelText: field.label + (field.required ? ' *' : ''),
+          labelText: field.label + (field.isRequired ? ' *' : ''),
           border: const OutlineInputBorder(),
           suffixIcon: const Icon(Icons.calendar_today),
           errorText: _validateField(field, currentValue),
@@ -226,7 +222,7 @@ class _DynamicFormState extends State<DynamicForm> {
         child: Text(
           currentValue != null
               ? DateFormat('yyyy-MM-dd').format(currentValue)
-              : field.placeholder ?? 'Select date',
+              : 'Select date',
           style: TextStyle(
             color: currentValue != null ? Colors.black : Colors.grey,
           ),
@@ -235,47 +231,47 @@ class _DynamicFormState extends State<DynamicForm> {
     );
   }
 
-  Widget _buildSelectField(TemplateFormField field) {
+  Widget _buildSelectField(FormFieldEntity field) {
     return DropdownButtonFormField<String>(
       decoration: InputDecoration(
-        labelText: field.label + (field.required ? ' *' : ''),
+        labelText: field.label + (field.isRequired ? ' *' : ''),
         border: const OutlineInputBorder(),
       ),
-      value: _formData[field.key] as String?,
-      items: (field.options ?? []).map((option) {
+      value: _formData[field.id] as String?,
+      items: (field.options).map((option) {
         return DropdownMenuItem<String>(value: option, child: Text(option));
       }).toList(),
       onChanged: (value) {
         setState(() {
-          _formData[field.key] = value;
+          _formData[field.id] = value;
         });
       },
-      onSaved: (value) => _formData[field.key] = value,
+      onSaved: (value) => _formData[field.id] = value,
       validator: (value) => _validateField(field, value),
     );
   }
 
-  Widget _buildMultiSelectField(TemplateFormField field) {
+  Widget _buildMultiSelectField(FormFieldEntity field) {
     final selectedValues =
-        (_formData[field.key] as List<dynamic>?)?.cast<String>() ?? [];
+        (_formData[field.id] as List<dynamic>?)?.cast<String>() ?? [];
 
     return FormField<List<String>>(
       initialValue: selectedValues,
       validator: (value) => _validateField(field, value),
-      onSaved: (value) => _formData[field.key] = value,
+      onSaved: (value) => _formData[field.id] = value,
       builder: (FormFieldState<List<String>> state) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              field.label + (field.required ? ' *' : ''),
+              field.label + (field.isRequired ? ' *' : ''),
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: (field.options ?? []).map((option) {
+              children: (field.options).map((option) {
                 final isSelected = selectedValues.contains(option);
                 return FilterChip(
                   label: Text(option),
@@ -287,7 +283,7 @@ class _DynamicFormState extends State<DynamicForm> {
                       } else {
                         selectedValues.remove(option);
                       }
-                      _formData[field.key] = selectedValues;
+                      _formData[field.id] = selectedValues;
                       state.didChange(selectedValues);
                     });
                   },
@@ -308,26 +304,25 @@ class _DynamicFormState extends State<DynamicForm> {
     );
   }
 
-  Widget _buildCheckboxField(TemplateFormField field) {
-    final value = _formData[field.key] as bool? ?? false;
+  Widget _buildCheckboxField(FormFieldEntity field) {
+    final value = _formData[field.id] as bool? ?? false;
 
     return CheckboxListTile(
-      title: Text(field.label + (field.required ? ' *' : '')),
-      subtitle: field.placeholder != null ? Text(field.placeholder!) : null,
+      title: Text(field.label + (field.isRequired ? ' *' : '')),
+      // subtitle: field.placeholder != null ? Text(field.placeholder!) : null,
       value: value,
       onChanged: (newValue) {
         setState(() {
-          _formData[field.key] = newValue ?? false;
+          _formData[field.id] = newValue ?? false;
         });
       },
       controlAffinity: ListTileControlAffinity.leading,
     );
   }
 
-  Widget _buildLocationField(TemplateFormField field) {
-    // We use separate controllers for lat/lng to ensure they persist and can be validated
-    final latController = _controllers['${field.key}_lat'];
-    final lngController = _controllers['${field.key}_lng'];
+  Widget _buildLocationField(FormFieldEntity field) {
+    final latController = _controllers['${field.id}_lat'];
+    final lngController = _controllers['${field.id}_lng'];
 
     if (latController == null || lngController == null) {
       return const Text('Error: Location controllers not initialized');
@@ -337,7 +332,7 @@ class _DynamicFormState extends State<DynamicForm> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          field.label + (field.required ? ' *' : ''),
+          field.label + (field.isRequired ? ' *' : ''),
           style: const TextStyle(fontSize: 12, color: Colors.grey),
         ),
         const SizedBox(height: 8),
@@ -355,10 +350,10 @@ class _DynamicFormState extends State<DynamicForm> {
                   signed: true,
                 ),
                 onChanged: (value) {
-                  _updateLocationData(field.key, lat: value);
+                  _updateLocationData(field.id, lat: value);
                 },
                 validator: (value) {
-                  if (field.required && (value == null || value.isEmpty)) {
+                  if (field.isRequired && (value == null || value.isEmpty)) {
                     return 'Required';
                   }
                   if (value != null &&
@@ -383,10 +378,10 @@ class _DynamicFormState extends State<DynamicForm> {
                   signed: true,
                 ),
                 onChanged: (value) {
-                  _updateLocationData(field.key, lng: value);
+                  _updateLocationData(field.id, lng: value);
                 },
                 validator: (value) {
-                  if (field.required && (value == null || value.isEmpty)) {
+                  if (field.isRequired && (value == null || value.isEmpty)) {
                     return 'Required';
                   }
                   if (value != null &&
@@ -411,9 +406,9 @@ class _DynamicFormState extends State<DynamicForm> {
     _formData[fieldKey] = currentMap;
   }
 
-  Widget _buildMediaField(TemplateFormField field) {
+  Widget _buildMediaField(FormFieldEntity field) {
     final mediaPaths =
-        (_formData[field.key] as List<dynamic>?)?.cast<String>() ?? [];
+        (_formData[field.id] as List<dynamic>?)?.cast<String>() ?? [];
 
     return FormField<List<String>>(
       initialValue: mediaPaths,
@@ -423,7 +418,7 @@ class _DynamicFormState extends State<DynamicForm> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              field.label + (field.required ? ' *' : ''),
+              field.label + (field.isRequired ? ' *' : ''),
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 8),
@@ -432,7 +427,7 @@ class _DynamicFormState extends State<DynamicForm> {
               onMediaSelected: (path) {
                 setState(() {
                   mediaPaths.add(path);
-                  _formData[field.key] = mediaPaths;
+                  _formData[field.id] = mediaPaths;
                   state.didChange(mediaPaths);
                 });
               },
@@ -471,7 +466,7 @@ class _DynamicFormState extends State<DynamicForm> {
                           onTap: () {
                             setState(() {
                               mediaPaths.removeAt(index);
-                              _formData[field.key] = mediaPaths;
+                              _formData[field.id] = mediaPaths;
                               state.didChange(mediaPaths);
                             });
                           },
@@ -512,8 +507,30 @@ class _DynamicFormState extends State<DynamicForm> {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
-      print('📤 Form submitted with data: $_formData');
-      widget.onSubmit(_formData);
+      // Build the properly structured submission data for the API
+      final Map<String, dynamic> fields = {};
+      for (final field in widget.template.fields) {
+        dynamic value = _formData[field.id];
+        
+        // Format date values as ISO string
+        if (value is DateTime) {
+          value = DateFormat('yyyy-MM-dd').format(value);
+        }
+        
+        fields[field.id] = {
+          'fieldId': field.id,
+          'fieldType': field.fieldType.toUpperCase(),
+          'value': value,
+        };
+      }
+
+      final submissionData = {
+        'formVersion': 1,
+        'fields': fields,
+      };
+
+      print('📤 Form submitted with data: $submissionData');
+      widget.onSubmit(submissionData);
     } else {
       print('⚠️ Form validation failed');
     }
@@ -538,10 +555,10 @@ class _DynamicFormState extends State<DynamicForm> {
                     widget.template.name,
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  if (widget.template.description != null) ...[
+                  if (widget.template.description.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(
-                      widget.template.description!,
+                      widget.template.description,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],

@@ -21,6 +21,11 @@ class DashboardCubit extends Cubit<DashboardState> {
   StreamSubscription<AnalyticsEntity?>? _analyticsSub;
 
   Future<void> init() async {
+    // Guard against double initialization
+    if (state.isInitialized || state.loading) {
+      _logger.i('Dashboard already initialized or loading, skipping init()');
+      return;
+    }
     _logger.i('🚀 Initializing dashboard...');
     emit(
       state.copyWith(
@@ -91,6 +96,7 @@ class DashboardCubit extends Cubit<DashboardState> {
         lastSynced: state.lastSynced,
         offline: false,
         requiresReauthentication: false,
+        isInitialized: true, // Set to true after successful initialization
       ),
     );
 

@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 
-import '../../../../core/db/daos/notification_dao.dart';
 import '../../../../core/domain/repository_result.dart';
 import '../../../../core/network/network_info.dart';
 import '../../domain/entities/notification_entity.dart';
@@ -9,14 +8,13 @@ import '../../domain/repositories/notification_repository.dart';
 import '../datasources/notification_remote_datasource.dart';
 import '../models/notification_model.dart';
 
+/// Simplified NotificationRepository - remote only, no local caching.
 class NotificationRepositoryImpl implements NotificationRepository {
-  final NotificationDao notificationDao;
   final NotificationRemoteDataSource remoteDataSource;
   final NetworkInfo networkInfo;
   final Logger logger;
 
   NotificationRepositoryImpl({
-    required this.notificationDao,
     required this.remoteDataSource,
     required this.networkInfo,
     Logger? logger,
@@ -24,9 +22,9 @@ class NotificationRepositoryImpl implements NotificationRepository {
 
   @override
   Stream<List<NotificationEntity>> watchNotifications(String userId) {
-    return notificationDao.watchNotificationsForUser(userId).map((rows) {
-      return rows.map((row) => NotificationModel.fromDb(row)).toList();
-    });
+    // Remote-only: no local stream
+    logger.w('watchNotifications is deprecated in remote-only mode');
+    return Stream.value([]);
   }
 
   @override
@@ -35,25 +33,15 @@ class NotificationRepositoryImpl implements NotificationRepository {
     int limit = 50,
     int offset = 0,
   }) async {
-    // Get cached notifications
-    final rows = await notificationDao.getNotificationsForUser(
-      userId,
-      limit: limit,
-      offset: offset,
-    );
-    final cached = rows.map((row) => NotificationModel.fromDb(row)).toList();
-
-    // Check connectivity
     final isOnline = await networkInfo.isOnline();
 
     if (!isOnline) {
       return RepositoryResult.local(
-        cached,
-        message: 'Offline mode. Showing cached notifications.',
+        [],
+        message: 'You are offline. Notifications cannot be loaded.',
       );
     }
 
-    // Online - fetch from remote
     try {
       final remoteData = await remoteDataSource.fetchNotifications(
         userId,
@@ -61,59 +49,60 @@ class NotificationRepositoryImpl implements NotificationRepository {
         offset: offset,
       );
 
-      // Upsert to local DB
-      for (final data in remoteData) {
-        final model = NotificationModel.fromJson(data);
-        await notificationDao.insertNotification(model.toCompanion());
-      }
-
-      // Return fresh local data
-      final updatedRows = await notificationDao.getNotificationsForUser(
-        userId,
-        limit: limit,
-        offset: offset,
-      );
-      final notifications =
-          updatedRows.map((row) => NotificationModel.fromDb(row)).toList();
+      final notifications = remoteData
+          .map((data) => NotificationModel.fromJson(data))
+          .toList();
 
       return RepositoryResult.remote(notifications);
     } on DioException catch (e) {
       logger.e('Dio error fetching notifications: $e');
       return RepositoryResult.local(
-        cached,
-        message: 'Network error. Showing cached notifications.',
+        [],
+        message: 'Network error. Cannot load notifications.',
       );
     } catch (e) {
       logger.e('Error fetching notifications: $e');
       return RepositoryResult.local(
-        cached,
-        message: 'Error loading notifications. Showing cached data.',
+        [],
+        message: 'Error loading notifications.',
       );
     }
   }
 
   @override
   Future<void> markAsRead(String id) async {
-    await notificationDao.markAsRead(id);
-    // TODO: Sync with server
-    // try {
-    //   if (await networkInfo.isOnline()) {
-    //     await remoteDataSource.markAsRead(id);
-    //   }
-    // } catch (e) {
-    //   logger.e('Error marking notification as read on server: $e');
-    // }
+    final isOnline = await networkInfo.isOnline();
+    if (!isOnline) {
+      throw Exception('Cannot mark notification as read while offline.');
+    }
+
+    try {
+      await remoteDataSource.markAsRead(id);
+    } catch (e) {
+      logger.e('Error marking notification as read: $e');
+      rethrow;
+    }
   }
 
   @override
   Future<void> markAllAsRead(String userId) async {
-    await notificationDao.markAllAsRead(userId);
-    // TODO: Sync with server
+    final isOnline = await networkInfo.isOnline();
+    if (!isOnline) {
+      throw Exception('Cannot mark notifications as read while offline.');
+    }
+
+    try {
+      await remoteDataSource.markAllAsRead(userId);
+    } catch (e) {
+      logger.e('Error marking all notifications as read: $e');
+      rethrow;
+    }
   }
 
   @override
   Future<void> addNotification(NotificationEntity notification) async {
-    final model = NotificationModel.fromEntity(notification);
-    await notificationDao.insertNotification(model.toCompanion());
+    // In remote-only mode, this is a no-op for push notifications
+    // as they come from the server
+    logger.d('addNotification called but notifications are remote-only');
   }
 }

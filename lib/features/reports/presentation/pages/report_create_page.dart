@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 
-import '../cubit/report_create_cubit.dart';
+import '../../../../core/services/location_service.dart';
+import '../cubit/report_form_cubit.dart';
 import '../widgets/template_selector.dart';
 import '../widgets/dynamic_form.dart';
-import '../../../../core/db/repositories/report_repository.dart';
+import '../../domain/repositories/report_repository.dart';
 import '../../../../features/dashboard/data/repositories/dashboard_repository_impl.dart';
 
 class ReportCreatePage extends StatelessWidget {
@@ -13,12 +14,25 @@ class ReportCreatePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => ReportCreateCubit(
-        reportRepository: GetIt.instance<ReportRepository>(),
-        dashboardRepository: GetIt.instance<DashboardRepository>(),
-      )..init(),
-      child: const _ReportCreateView(),
+    return FutureBuilder<String?>(
+      future: GetIt.instance<DashboardRepository>().getActiveProjectId(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final projectId = snapshot.data ?? '';
+
+        return BlocProvider(
+          create: (context) => ReportFormCubit(
+            repository: GetIt.instance<ReportRepository>(),
+            locationService: GetIt.instance<LocationService>(),
+          )..loadTemplates(projectId),
+          child: const _ReportCreateView(),
+        );
+      },
     );
   }
 }
@@ -30,9 +44,9 @@ class _ReportCreateView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Create Report')),
-      body: BlocConsumer<ReportCreateCubit, ReportCreateState>(
+      body: BlocConsumer<ReportFormCubit, ReportFormState>(
         listener: (context, state) {
-          if (state is ReportCreateSuccess) {
+          if (state is ReportFormSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('Report created successfully: ${state.reportId}'),
@@ -40,199 +54,54 @@ class _ReportCreateView extends StatelessWidget {
               ),
             );
             Navigator.of(context).pop();
-          } else if (state is ReportCreateError) {
+          } else if (state is ReportFormError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),
                 backgroundColor: Colors.red,
-                action: SnackBarAction(
-                  label: 'Retry',
-                  textColor: Colors.white,
-                  onPressed: () {
-                    context.read<ReportCreateCubit>().retry();
-                  },
-                ),
               ),
             );
           }
         },
         builder: (context, state) {
-          if (state is ReportCreateInitial || state is ReportCreateLoading) {
-            return const Center(
-              child: CircularProgressIndicator(semanticsLabel: 'Loading'),
-            );
+          if (state is ReportFormLoading) {
+            return const Center(child: CircularProgressIndicator());
           }
 
-          if (state is ReportCreateNoProject) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.folder_off, size: 64, color: Colors.grey),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'No Project Selected',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Please select a project from the Dashboard before creating a report.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 16, color: Colors.grey),
-                    ),
-                    const SizedBox(height: 32),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      icon: const Icon(Icons.dashboard),
-                      label: const Text('Go to Dashboard'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 16,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          if (state is ReportCreateTemplatesLoaded) {
+          if (state is ReportFormTemplatesLoaded) {
             if (state.selectedTemplate == null) {
-              // Show template selector
               return TemplateSelector(
                 templates: state.templates,
                 selectedTemplate: state.selectedTemplate,
                 onSelected: (template) {
-                  context.read<ReportCreateCubit>().selectTemplate(template);
+                  context.read<ReportFormCubit>().selectTemplate(template);
                 },
               );
             } else {
-              // Show dynamic form
               return DynamicForm(
                 template: state.selectedTemplate!,
                 onSubmit: (formData) {
-                  context.read<ReportCreateCubit>().submit(formData);
+                  context.read<ReportFormCubit>().submitReport(
+                    projectId: state.projectId,
+                    templateId: state.selectedTemplate!.id,
+                    data: formData,
+                  );
                 },
                 onCancel: () {
-                  // Deselect template to go back to selector
-                  context.read<ReportCreateCubit>().init();
+                  // Reload specific project templates or jus deselect
+                  // Since we don't have deselect in cubit easily without reload or explicit method
+                  // For now, simpler to reload
+                  context.read<ReportFormCubit>().loadTemplates(state.projectId);
                 },
               );
             }
           }
 
-          if (state is ReportCreateSubmitting) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const CircularProgressIndicator(),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Submitting ${state.template.name}...',
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ],
-              ),
-            );
+          if (state is ReportFormSubmitting) {
+            return const Center(child: CircularProgressIndicator());
           }
 
-          if (state is ReportCreateError) {
-            // Show error with option to retry
-            if (state.templates != null && state.selectedTemplate == null) {
-              // Error during template loading, show selector with error
-              return Column(
-                children: [
-                  Container(
-                    color: Colors.red.shade50,
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.error, color: Colors.red),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            state.message,
-                            style: const TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: TemplateSelector(
-                      templates: state.templates!,
-                      selectedTemplate: state.selectedTemplate,
-                      onSelected: (template) {
-                        context.read<ReportCreateCubit>().selectTemplate(
-                          template,
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              );
-            } else if (state.selectedTemplate != null) {
-              // Error during submission, show form with error
-              return Column(
-                children: [
-                  Container(
-                    color: Colors.red.shade50,
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.error, color: Colors.red),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            state.message,
-                            style: const TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: DynamicForm(
-                      template: state.selectedTemplate!,
-                      onSubmit: (formData) {
-                        context.read<ReportCreateCubit>().submit(formData);
-                      },
-                      onCancel: () {
-                        context.read<ReportCreateCubit>().init();
-                      },
-                    ),
-                  ),
-                ],
-              );
-            }
-          }
-
-          // Fallback
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('Something went wrong'),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    context.read<ReportCreateCubit>().retry();
-                  },
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          );
+          return const Center(child: Text('Initialize...'));
         },
       ),
     );

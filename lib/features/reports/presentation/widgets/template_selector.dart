@@ -1,115 +1,11 @@
 import 'package:flutter/material.dart';
-
-/// Model representing a form template
-class FormTemplate {
-  final String id;
-  final String name;
-  final String? description;
-  final List<TemplateFormField> fields;
-  final DateTime? lastSynced;
-
-  const FormTemplate({
-    required this.id,
-    required this.name,
-    this.description,
-    required this.fields,
-    this.lastSynced,
-  });
-
-  factory FormTemplate.fromJson(Map<String, dynamic> json) {
-    final fieldsJson = json['fields'] as List<dynamic>? ?? [];
-    return FormTemplate(
-      id: json['id']?.toString() ?? '',
-      name: json['name'] as String? ?? 'Unnamed Template',
-      description: json['description'] as String?,
-      fields: fieldsJson
-          .map((f) => TemplateFormField.fromJson(f as Map<String, dynamic>))
-          .toList(),
-      lastSynced: json['last_synced'] != null
-          ? DateTime.fromMillisecondsSinceEpoch(json['last_synced'] as int)
-          : null,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'description': description,
-      'fields': fields.map((f) => f.toJson()).toList(),
-      'last_synced': lastSynced?.millisecondsSinceEpoch,
-    };
-  }
-}
-
-/// Model representing a form field in a template
-class TemplateFormField {
-  final String key;
-  final String label;
-  final String
-  type; // text, longtext, number, date, select, multi_select, checkbox, location, media
-  final bool required;
-  final List<String>? options; // For select/multi_select
-  final String? placeholder;
-  final dynamic defaultValue;
-
-  const TemplateFormField({
-    required this.key,
-    required this.label,
-    required this.type,
-    this.required = false,
-    this.options,
-    this.placeholder,
-    this.defaultValue,
-  });
-
-  factory TemplateFormField.fromJson(Map<String, dynamic> json) {
-    // Map backend fields to model fields
-    // Backend: id, label, fieldType, isRequired, displayOrder
-    // Model: key, label, type, required, options, placeholder, defaultValue
-
-    String rawType =
-        (json['fieldType'] as String? ?? json['type'] as String? ?? 'text')
-            .toUpperCase();
-    String normalizedType = rawType.toLowerCase();
-
-    // Map specific backend types to frontend types if needed
-    if (rawType == 'MEDIA_UPLOAD') {
-      normalizedType = 'media';
-    } else if (rawType == 'MULTI_SELECT') {
-      normalizedType = 'multi_select';
-    }
-
-    return TemplateFormField(
-      key: json['id'] as String? ?? json['key'] as String? ?? '',
-      label: json['label'] as String? ?? 'Unnamed Field',
-      type: normalizedType,
-      required:
-          json['isRequired'] as bool? ?? json['required'] as bool? ?? false,
-      options: (json['options'] as List<dynamic>?)?.cast<String>(),
-      placeholder: json['placeholder'] as String?,
-      defaultValue: json['default_value'],
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'key': key,
-      'label': label,
-      'type': type,
-      'required': required,
-      if (options != null) 'options': options,
-      if (placeholder != null) 'placeholder': placeholder,
-      if (defaultValue != null) 'default_value': defaultValue,
-    };
-  }
-}
+import '../../domain/entities/form_template_entity.dart';
 
 /// Widget for selecting a form template
 class TemplateSelector extends StatefulWidget {
-  final List<FormTemplate> templates;
-  final FormTemplate? selectedTemplate;
-  final ValueChanged<FormTemplate> onSelected;
+  final List<FormTemplateEntity> templates;
+  final FormTemplateEntity? selectedTemplate;
+  final ValueChanged<FormTemplateEntity> onSelected;
   final bool isLoading;
 
   const TemplateSelector({
@@ -126,7 +22,7 @@ class TemplateSelector extends StatefulWidget {
 
 class _TemplateSelectorState extends State<TemplateSelector> {
   final TextEditingController _searchController = TextEditingController();
-  List<FormTemplate> _filteredTemplates = [];
+  List<FormTemplateEntity> _filteredTemplates = [];
 
   @override
   void initState() {
@@ -154,7 +50,7 @@ class _TemplateSelectorState extends State<TemplateSelector> {
     setState(() {
       _filteredTemplates = widget.templates.where((template) {
         return template.name.toLowerCase().contains(query) ||
-            (template.description?.toLowerCase().contains(query) ?? false);
+            (template.description.toLowerCase().contains(query));
       }).toList();
     });
   }
@@ -257,13 +153,13 @@ class _TemplateSelectorState extends State<TemplateSelector> {
                                   : FontWeight.normal,
                             ),
                           ),
-                          subtitle: template.description != null
-                              ? Text(
-                                  template.description!,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                )
-                              : Text('${template.fields.length} fields'),
+                          subtitle: Text(
+                            template.description.isNotEmpty
+                                ? template.description
+                                : '${template.fields.length} fields',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           trailing: isSelected
                               ? Icon(
                                   Icons.check_circle,

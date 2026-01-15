@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../../../../core/di/injection_container.dart';
 import '../../../../core/domain/repository_result.dart';
 import '../../../dashboard/presentation/bloc/dashboard_cubit.dart';
 import '../../../requests/presentation/cubit/requests_cubit.dart';
@@ -12,10 +10,7 @@ class MyRequestsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<RequestsCubit>(),
-      child: const _MyRequestsView(),
-    );
+    return const _MyRequestsView();
   }
 }
 
