@@ -1,3 +1,6 @@
+import 'package:field_link/core/presentation/widgets/custom_card.dart';
+import 'package:field_link/core/presentation/widgets/status_badge.dart';
+import 'package:field_link/core/utils/theme/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -24,10 +27,19 @@ class _ReportsListView extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
-          title: const Text('Reports'),
-          bottom: const TabBar(
-            tabs: [
+          title: Text(
+            'Reports',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          bottom: TabBar(
+            indicatorColor: DesignSystem.primary,
+            labelColor: DesignSystem.primary,
+            unselectedLabelColor: DesignSystem.textSecondaryLight,
+            tabs: const [
               Tab(text: 'Submitted'),
               Tab(text: 'Pending'),
             ],
@@ -35,6 +47,7 @@ class _ReportsListView extends StatelessWidget {
           actions: [
             IconButton(
               icon: const Icon(Icons.refresh),
+               color: DesignSystem.primary,
               onPressed: () => context.read<ReportsCubit>().refresh(),
             ),
           ],
@@ -48,12 +61,12 @@ class _ReportsListView extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                      Icon(Icons.error_outline, color: DesignSystem.error, size: 48),
                       const SizedBox(height: 16),
                       Text(
                         'Error: ${state.message}',
                         textAlign: TextAlign.center,
-                        style: const TextStyle(fontSize: 16),
+                        style: TextStyle(fontSize: 16, color: DesignSystem.error),
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton(
@@ -66,8 +79,13 @@ class _ReportsListView extends StatelessWidget {
               );
             }
             if (state is ReportsNoProjectSelected) {
-              return const Center(
-                child: Text('Please select a project to view reports'),
+              return Center(
+                child: Text(
+                  'Please select a project to view reports',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: DesignSystem.textSecondaryLight,
+                  ),
+                ),
               );
             }
             if (state is ReportsLoading) {
@@ -75,10 +93,10 @@ class _ReportsListView extends StatelessWidget {
             }
             if (state is ReportsLoaded) {
               final submittedReports = state.reports
-                  .where((r) => r.status?.toUpperCase() == 'SUBMITTED' || r.status?.toUpperCase() == 'REVIEWED')
+                  .where((r) => r.status.toUpperCase() == 'SUBMITTED' || r.status.toUpperCase() == 'REVIEWED')
                   .toList();
               final pendingReports = state.reports
-                  .where((r) => r.status?.toUpperCase() != 'SUBMITTED' && r.status?.toUpperCase() != 'REVIEWED')
+                  .where((r) => r.status.toUpperCase() != 'SUBMITTED' && r.status.toUpperCase() != 'REVIEWED')
                   .toList();
 
               return TabBarView(
@@ -101,6 +119,8 @@ class _ReportsListView extends StatelessWidget {
           builder: (context, state) {
             if (state is ReportsNoProjectSelected) return const SizedBox.shrink();
             return FloatingActionButton(
+              backgroundColor: DesignSystem.primary,
+              foregroundColor: DesignSystem.onPrimary,
               onPressed: () {
                 Navigator.push(
                   context,
@@ -130,34 +150,78 @@ class _ReportsList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (reports.isEmpty) {
-      return Center(child: Text(emptyMessage));
+      return Center(
+        child: Text(
+          emptyMessage,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: DesignSystem.textSecondaryLight,
+          ),
+        ),
+      );
     }
 
     return RefreshIndicator(
       onRefresh: () => context.read<ReportsCubit>().refresh(),
+      color: DesignSystem.primary,
       child: ListView.builder(
+        padding: const EdgeInsets.all(16),
         itemCount: reports.length,
         itemBuilder: (context, index) {
           final report = reports[index];
-          return ListTile(
-            title: Text(
-              'Report ${report.reportNumber ?? report.reportDate}',
-            ),
-            subtitle: Text(
-              'Status: ${report.status ?? 'Unknown'}\nDate: ${report.reportDate}',
-            ),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ReportDetailPage(
-                    projectId: report.projectId,
-                    reportId: report.id,
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: CustomCard(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ReportDetailPage(
+                      projectId: report.projectId,
+                      reportId: report.id,
+                    ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          report.reportNumber ?? 'New Report',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: DesignSystem.textPrimaryLight,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      StatusBadge(status: report.status),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_today_outlined, 
+                        size: 14, 
+                         color: DesignSystem.textSecondaryLight,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        report.reportDate,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: DesignSystem.textSecondaryLight,
+                        ),
+                      ),
+                    ],
+                  ),
+                  // Additional details can go here
+                ],
+              ),
+            ),
           );
         },
       ),

@@ -1,3 +1,4 @@
+import 'package:field_link/core/utils/theme/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
@@ -70,13 +71,12 @@ class _IssuesListPageState extends State<IssuesListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     if (_projectId == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
           title: _isSearching
               ? TextField(
@@ -93,7 +93,7 @@ class _IssuesListPageState extends State<IssuesListPage> {
                     _updateFilters();
                   },
                 )
-              : const Text('Issues'),
+              : Text('Issues', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
           actions: [
             IconButton(
               icon: Icon(_isSearching ? Icons.close : Icons.search),
@@ -146,14 +146,14 @@ class _IssuesListPageState extends State<IssuesListPage> {
                           Icon(
                             Icons.error_outline,
                             size: 64,
-                            color: theme.colorScheme.error,
+                            color: DesignSystem.error,
                           ),
                           const SizedBox(height: 16),
-                          Text('Error', style: theme.textTheme.titleLarge),
+                          Text('Error', style: Theme.of(context).textTheme.titleLarge),
                           const SizedBox(height: 8),
                           Text(
                             state.message,
-                            style: theme.textTheme.bodyMedium,
+                            style: Theme.of(context).textTheme.bodyMedium,
                             textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 24),
@@ -184,20 +184,20 @@ class _IssuesListPageState extends State<IssuesListPage> {
                               horizontal: 16,
                               vertical: 12,
                             ),
-                            color: theme.colorScheme.errorContainer,
+                            color: DesignSystem.error.withValues(alpha: 0.1),
                             child: Row(
                               children: [
                                 Icon(
                                   Icons.cloud_off,
                                   size: 20,
-                                  color: theme.colorScheme.onErrorContainer,
+                                  color: DesignSystem.error,
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
                                     state.errorMessage!,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.colorScheme.onErrorContainer,
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: DesignSystem.error,
                                     ),
                                   ),
                                 ),
@@ -215,24 +215,23 @@ class _IssuesListPageState extends State<IssuesListPage> {
                                       Icon(
                                         Icons.assignment_outlined,
                                         size: 64,
-                                        color: theme.colorScheme.outline,
+                                        color: DesignSystem.textSecondaryLight,
                                       ),
                                       const SizedBox(height: 16),
                                       Text(
                                         'No issues found',
-                                        style: theme.textTheme.titleMedium
+                                        style: Theme.of(context).textTheme.titleMedium
                                             ?.copyWith(
-                                              color: theme.colorScheme.outline,
+                                              color: DesignSystem.textSecondaryLight,
                                             ),
                                       ),
                                       if (_projectId == null) ...[
                                         const SizedBox(height: 8),
                                         Text(
                                           'Please select a project from the dashboard',
-                                          style: theme.textTheme.bodySmall
+                                          style: Theme.of(context).textTheme.bodySmall
                                               ?.copyWith(
-                                                color:
-                                                    theme.colorScheme.outline,
+                                                color: DesignSystem.textSecondaryLight,
                                               ),
                                         ),
                                       ],
@@ -245,7 +244,9 @@ class _IssuesListPageState extends State<IssuesListPage> {
                                       RefreshIssues(projectId: _projectId!),
                                     );
                                   },
+                                  color: DesignSystem.primary,
                                   child: ListView.builder(
+                                    padding: const EdgeInsets.only(top: 8),
                                     itemCount: state.issues.length,
                                     itemBuilder: (context, index) {
                                       final issue = state.issues[index];
@@ -278,6 +279,8 @@ class _IssuesListPageState extends State<IssuesListPage> {
           ],
         ),
         floatingActionButton: FloatingActionButton(
+          backgroundColor: DesignSystem.primary,
+          foregroundColor: DesignSystem.onPrimary,
           onPressed: () {
             Navigator.push(
               context,

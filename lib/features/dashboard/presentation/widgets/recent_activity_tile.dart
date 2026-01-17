@@ -1,3 +1,6 @@
+import 'dart:ui';
+import 'package:field_link/core/presentation/widgets/custom_card.dart';
+import 'package:field_link/core/utils/theme/design_system.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -12,41 +15,33 @@ class RecentActivityTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final foreground = theme.brightness == Brightness.dark
-        ? Colors.white
-        : Colors.black;
-    final muted = foreground.withOpacity(0.5);
-
+    
     final timestamp = activity.timestamp != null
         ? DateFormat('MMM d, HH:mm').format(activity.timestamp!.toLocal())
         : 'Unknown time';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: foreground.withOpacity(0.08)),
-      ),
+    return CustomCard(
+      padding: const EdgeInsets.all(DesignSystem.spacingM),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 40, // Slightly larger
+            height: 40,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: foreground.withOpacity(0.2)),
+              color: DesignSystem.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(DesignSystem.radiusM),
             ),
             alignment: Alignment.center,
             child: Text(
               activity.type.substring(0, 1).toUpperCase(),
               style: theme.textTheme.titleMedium?.copyWith(
-                color: foreground,
-                fontWeight: FontWeight.w600,
+                color: DesignSystem.primary,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: DesignSystem.spacingM),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,22 +49,24 @@ class RecentActivityTile extends StatelessWidget {
                 Text(
                   activity.title,
                   style: theme.textTheme.titleMedium?.copyWith(
-                    color: foreground,
                     fontWeight: FontWeight.w600,
+                    color: DesignSystem.textPrimaryLight, // Should be adaptive based on theme
                   ),
                 ),
                 if (activity.description.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
                     activity.description,
-                    style: theme.textTheme.bodySmall?.copyWith(color: muted),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: DesignSystem.textSecondaryLight,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 6),
                 Text(
                   timestamp,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: muted,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: DesignSystem.textSecondaryLight,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),

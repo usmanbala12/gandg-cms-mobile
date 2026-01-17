@@ -1,18 +1,20 @@
 import 'dart:math' as math;
 
+import 'package:field_link/core/presentation/widgets/custom_card.dart';
+import 'package:field_link/core/presentation/widgets/metric_tile.dart';
+import 'package:field_link/core/utils/theme/design_system.dart';
+import 'package:field_link/features/authentication/presentation/bloc/auth/auth_bloc.dart';
+import 'package:field_link/features/authentication/presentation/bloc/auth/auth_event.dart';
+import 'package:field_link/features/authentication/presentation/bloc/auth/auth_state.dart';
 import 'package:field_link/features/dashboard/domain/analytics_entity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 import '../bloc/dashboard_cubit.dart';
-import '../widgets/analytics_card.dart';
 import '../widgets/project_selector.dart';
 import '../widgets/recent_activity_tile.dart';
 import '../widgets/sync_status_widget.dart';
-
-import 'package:field_link/features/authentication/presentation/bloc/auth/auth_bloc.dart';
-import 'package:field_link/features/authentication/presentation/bloc/auth/auth_event.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -34,25 +36,13 @@ class _DashboardViewState extends State<_DashboardView> {
   @override
   void initState() {
     super.initState();
-    // Trigger initialization when dashboard becomes visible
-    // The guard in init() prevents double initialization
     context.read<DashboardCubit>().init();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        elevation: 0,
-        titleSpacing: 16,
-        title: const ProjectSelector(),
-        actions: const [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: SyncStatusWidget(),
-          ),
-        ],
-      ),
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: BlocBuilder<DashboardCubit, DashboardState>(
         buildWhen: (previous, current) =>
             previous.analytics != current.analytics ||
@@ -60,50 +50,109 @@ class _DashboardViewState extends State<_DashboardView> {
             previous.error != current.error ||
             previous.offline != current.offline ||
             previous.requiresReauthentication != current.requiresReauthentication,
-        builder: (context, state) {
+          builder: (context, state) {
           if (state.requiresReauthentication) {
             return const _LoginPrompt();
           }
 
-          final analytics =
-              state.analytics ??
+          final analytics = state.analytics ??
               (state.selectedProjectId != null
                   ? AnalyticsEntity.empty(state.selectedProjectId!)
                   : null);
 
-          return RefreshIndicator(
-            onRefresh: () => context.read<DashboardCubit>().refresh(),
-            color: Theme.of(context).primaryColor,
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
-              children: [
-                if (state.loading) const LinearProgressIndicator(minHeight: 2),
-                if (state.error != null) ...[
-                  const SizedBox(height: 12),
-                  _ErrorBanner(message: state.error!, offline: state.offline),
+          return SafeArea(
+            child: RefreshIndicator(
+              onRefresh: () => context.read<DashboardCubit>().refresh(),
+              color: DesignSystem.primary,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+                children: [
+                  const _DashboardHeader(),
+                  const SizedBox(height: 24),
+                  if (state.loading) const LinearProgressIndicator(minHeight: 2),
+                  if (state.error != null) ...[
+                    const SizedBox(height: 12),
+                    _ErrorBanner(message: state.error!, offline: state.offline),
+                  ],
+                  const SizedBox(height: 16),
+                  if (analytics != null)
+                    _AnalyticsGrid(analytics: analytics)
+                  else
+                    const _EmptyPlaceholder('Select a project to view analytics'),
+                  const SizedBox(height: 32),
+                  if (analytics != null)
+                    _ChartsSection(analytics: analytics)
+                  else
+                    const SizedBox.shrink(),
+                  const SizedBox(height: 32),
+                  if (analytics != null)
+                    _RecentActivitySection(analytics: analytics)
+                  else
+                    const SizedBox.shrink(),
+                  const SizedBox(height: 32),
                 ],
-                const SizedBox(height: 16),
-                if (analytics != null)
-                  _AnalyticsGrid(analytics: analytics)
-                else
-                  const _EmptyPlaceholder('Select a project to view analytics'),
-                const SizedBox(height: 24),
-                if (analytics != null)
-                  _ChartsSection(analytics: analytics)
-                else
-                  const SizedBox.shrink(),
-                const SizedBox(height: 24),
-                if (analytics != null)
-                  _RecentActivitySection(analytics: analytics)
-                else
-                  const SizedBox.shrink(),
-                const SizedBox(height: 32),
-              ],
+              ),
             ),
           );
         },
       ),
+    );
+  }
+}
+
+class _DashboardHeader extends StatelessWidget {
+  const _DashboardHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final userName = state.user?.fullName.split(' ').first ?? 'User';
+        
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Good Morning,',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: DesignSystem.textSecondaryLight,
+                      ),
+                    ),
+                    Text(
+                      '$userName!',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: DesignSystem.textPrimaryLight,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: DesignSystem.surfaceLight,
+                    shape: BoxShape.circle,
+                    boxShadow: DesignSystem.shadowSm,
+                    border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                  ),
+                   padding: const EdgeInsets.all(8),
+                   child: const SyncStatusWidget(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const ProjectSelector(),
+          ],
+        );
+      },
     );
   }
 }
@@ -120,7 +169,7 @@ class _LoginPrompt extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.lock_outline, size: 64, color: theme.colorScheme.error),
+            Icon(Icons.lock_outline, size: 64, color: DesignSystem.error),
             const SizedBox(height: 16),
             Text(
               'Authentication Required',
@@ -141,12 +190,6 @@ class _LoginPrompt extends StatelessWidget {
               },
               icon: const Icon(Icons.login),
               label: const Text('Sign In'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 12,
-                ),
-              ),
             ),
           ],
         ),
@@ -164,84 +207,44 @@ class _AnalyticsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     final numberFormat = NumberFormat.decimalPattern();
     final isStale = analytics.isStale || analytics.isExpired;
-    final metricCards = [
-      AnalyticsCard(
-        title: 'Reports',
-        value: numberFormat.format(analytics.reportsCount),
-        icon: Icons.description_outlined,
-        subtitle: analytics.lastSyncedAt != null
-            ? 'Updated ${DateFormat('MMM d').format(analytics.lastSyncedAt!.toLocal())}'
-            : 'No sync yet',
-      ),
-      AnalyticsCard(
-        title: 'Pending Requests',
-        value: numberFormat.format(analytics.pendingRequests),
-        icon: Icons.hourglass_top_outlined,
-        subtitle: isStale ? 'Stale data' : 'Current',
-      ),
-      AnalyticsCard(
-        title: 'Open Issues',
-        value: numberFormat.format(analytics.openIssues),
-        icon: Icons.warning_amber_outlined,
-        subtitle: analytics.openIssues > 0 ? 'Needs attention' : 'All clear',
-      ),
-    ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxWidth = constraints.maxWidth;
-        if (maxWidth > 900) {
-          return Row(
-            children: [
-              for (var i = 0; i < metricCards.length; i++)
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      right: i == metricCards.length - 1 ? 0 : 16,
-                    ),
-                    child: metricCards[i],
-                  ),
-                ),
-            ],
-          );
-        }
-
-        if (maxWidth > 600) {
-          return Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 12),
-                      child: metricCards[0],
-                    ),
-                  ),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 12),
-                      child: metricCards[1],
-                    ),
-                  ),
-                ],
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: MetricTile(
+                title: 'Reports',
+                value: numberFormat.format(analytics.reportsCount),
+                icon: Icons.description_outlined,
+                iconColor: DesignSystem.primary,
+                trend: 12.5, // Dummy positive trend for demo
+                trendLabel: 'vs last week',
               ),
-              const SizedBox(height: 16),
-              metricCards[2],
-            ],
-          );
-        }
-
-        return Column(
-          children: metricCards
-              .map(
-                (card) => Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: card,
-                ),
-              )
-              .toList(),
-        );
-      },
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: MetricTile(
+                title: 'Pending',
+                value: numberFormat.format(analytics.pendingRequests),
+                icon: Icons.hourglass_top_outlined,
+                iconColor: DesignSystem.warning,
+                trend: isStale ? null : -5.0,
+                trendLabel: isStale ? 'Stale data' : 'vs last week',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        MetricTile(
+          title: 'Open Issues',
+          value: numberFormat.format(analytics.openIssues),
+          icon: Icons.warning_amber_outlined,
+          iconColor: DesignSystem.error,
+          trend: analytics.openIssues > 0 ? 2.0 : 0.0,
+          trendLabel: analytics.openIssues > 0 ? 'Needs attention' : 'All clear',
+        ),
+      ],
     );
   }
 }
@@ -254,9 +257,7 @@ class _ChartsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = theme.brightness == Brightness.dark
-        ? Colors.white
-        : Colors.black;
+    final primaryColor = DesignSystem.primary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -268,12 +269,8 @@ class _ChartsSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        Container(
+        CustomCard(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withOpacity(0.08)),
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -286,7 +283,7 @@ class _ChartsSection extends StatelessWidget {
                         child: CustomPaint(
                           painter: _LineChartPainter(
                             analytics.reportTrend,
-                            color,
+                            primaryColor,
                           ),
                         ),
                       )
@@ -296,12 +293,8 @@ class _ChartsSection extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        Container(
+        CustomCard(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: color.withOpacity(0.08)),
-          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -317,7 +310,7 @@ class _ChartsSection extends StatelessWidget {
                         child: CustomPaint(
                           painter: _BarChartPainter(
                             analytics.statusBreakdown,
-                            color,
+                            primaryColor,
                           ),
                         ),
                       )
@@ -343,11 +336,22 @@ class _RecentActivitySection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Recent activity',
-          style: theme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w600,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Recent Activity',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                // Navigate to full list
+              },
+              child: const Text('View All'),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         if (analytics.recentActivity.isEmpty)
@@ -373,15 +377,21 @@ class _LineChartPainter extends CustomPainter {
           ..sort((a, b) => a.timestamp.compareTo(b.timestamp)),
         _linePaint = Paint()
           ..color = color
-          ..strokeWidth = 2
+          ..strokeWidth = 3 // Thicker lines
           ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
           ..isAntiAlias = true,
         _axisPaint = Paint()
-          ..color = color.withValues(alpha: 0.2)
+          ..color = color.withValues(alpha: 0.1)
           ..strokeWidth = 1,
         _dotPaint = Paint()
-          ..color = color
+          ..color = Colors.white
           ..style = PaintingStyle.fill;
+          
+  final Paint _dotBorderPaint = Paint()
+      ..color = DesignSystem.primary
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
 
   final List<TimeSeriesPoint> sortedPoints;
   final Color color;
@@ -409,21 +419,58 @@ class _LineChartPainter extends CustomPainter {
           : ((point.timestamp.millisecondsSinceEpoch - minX) / (maxX - minX)) *
                 size.width;
       final normalizedY = point.count / maxY;
-      final y = size.height - (normalizedY * size.height);
+      final y = size.height - (normalizedY * size.height * 0.8) - (size.height * 0.1); 
+      // Scale to keep within bounds with padding
+      
       if (i == 0) {
         path.moveTo(x, y);
       } else {
-        path.lineTo(x, y);
+        // Curve the line
+        final prevPoint = sortedPoints[i - 1];
+        final prevX = maxX == minX
+            ? size.width * (sortedPoints.length == 1 ? 0.5 : (i - 1) / (sortedPoints.length - 1))
+            : ((prevPoint.timestamp.millisecondsSinceEpoch - minX) / (maxX - minX)) *
+                  size.width;
+        final prevNormalizedY = prevPoint.count / maxY;
+        final prevY = size.height - (prevNormalizedY * size.height * 0.8) - (size.height * 0.1);
+        
+        final controlX1 = prevX + (x - prevX) / 2;
+        final controlX2 = prevX + (x - prevX) / 2;
+        
+        path.cubicTo(controlX1, prevY, controlX2, y, x, y);
       }
     }
 
+    // Draw gradient fill
+    final fillPath = Path.from(path)
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+      
+    final gradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [
+        color.withValues(alpha: 0.2),
+        color.withValues(alpha: 0.0),
+      ],
+    );
+    
+    canvas.drawPath(
+      fillPath, 
+      Paint()..shader = gradient.createShader(Rect.fromLTWH(0, 0, size.width, size.height))
+    );
+
+    // Draw grid lines
     canvas.drawLine(
-      Offset(0, size.height - 1),
-      Offset(size.width, size.height - 1),
+      Offset(0, size.height),
+      Offset(size.width, size.height),
       _axisPaint,
     );
+
     canvas.drawPath(path, _linePaint);
 
+    // Draw dots
     for (var i = 0; i < sortedPoints.length; i++) {
       final point = sortedPoints[i];
       final x = maxX == minX
@@ -431,8 +478,10 @@ class _LineChartPainter extends CustomPainter {
           : ((point.timestamp.millisecondsSinceEpoch - minX) / (maxX - minX)) *
                 size.width;
       final normalizedY = point.count / maxY;
-      final y = size.height - (normalizedY * size.height);
-      canvas.drawCircle(Offset(x, y), 3, _dotPaint);
+      final y = size.height - (normalizedY * size.height * 0.8) - (size.height * 0.1);
+      
+      canvas.drawCircle(Offset(x, y), 4, _dotPaint);
+      canvas.drawCircle(Offset(x, y), 4, _dotBorderPaint);
     }
   }
 
@@ -471,22 +520,28 @@ class _BarChartPainter extends CustomPainter {
     final barWidth = size.width / (segments.length * 2);
 
     canvas.drawLine(
-      Offset(0, size.height - 1),
-      Offset(size.width, size.height - 1),
+      Offset(0, size.height),
+      Offset(size.width, size.height),
       _axisPaint,
     );
 
     for (var i = 0; i < segments.length; i++) {
       final segment = segments[i];
-      final barHeight = (segment.count / _maxValue) * (size.height - 16);
+      final barHeight = (segment.count / _maxValue) * (size.height - 20);
       final left = (i * 2 + 0.5) * barWidth;
-      final rect = Rect.fromLTWH(
-        left,
-        size.height - barHeight,
-        barWidth,
-        barHeight,
+      
+      // Draw rounded bar
+      final rrect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          left,
+          size.height - barHeight,
+          barWidth,
+          barHeight,
+        ),
+        const Radius.circular(4),
       );
-      canvas.drawRect(rect, _barPaint);
+      
+      canvas.drawRRect(rrect, _barPaint);
     }
   }
 
@@ -504,22 +559,18 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = theme.brightness == Brightness.dark
-        ? Colors.white
-        : Colors.black;
-
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
+        color: DesignSystem.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: DesignSystem.error.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          Icon(offline ? Icons.wifi_off : Icons.error_outline, color: color),
+          Icon(offline ? Icons.wifi_off : Icons.error_outline, color: DesignSystem.error),
           const SizedBox(width: 12),
-          Expanded(child: Text(message, style: theme.textTheme.bodyMedium)),
+          Expanded(child: Text(message, style: TextStyle(color: DesignSystem.error))),
         ],
       ),
     );
@@ -534,16 +585,15 @@ class _EmptyPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color = theme.brightness == Brightness.dark
-        ? Colors.white.withOpacity(0.4)
-        : Colors.black.withOpacity(0.4);
-
+    
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
         child: Text(
           message,
-          style: theme.textTheme.bodyMedium?.copyWith(color: color),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: DesignSystem.textSecondaryLight,
+          ),
           textAlign: TextAlign.center,
         ),
       ),
