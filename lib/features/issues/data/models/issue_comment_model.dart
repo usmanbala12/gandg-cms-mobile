@@ -6,7 +6,9 @@ class IssueCommentModel {
   final String id;
   final String issueLocalId;
   final String authorId;
-  final String body;
+  final String content;
+  final String? type;
+  final Map<String, dynamic>? author;
   final int createdAt;
   final String? serverId;
   final int? serverCreatedAt;
@@ -16,7 +18,9 @@ class IssueCommentModel {
     required this.id,
     required this.issueLocalId,
     required this.authorId,
-    required this.body,
+    required this.content,
+    this.type,
+    this.author,
     required this.createdAt,
     this.serverId,
     this.serverCreatedAt,
@@ -25,24 +29,46 @@ class IssueCommentModel {
 
   /// Convert from JSON (server response).
   factory IssueCommentModel.fromJson(Map<String, dynamic> json) {
+    // Parse date
+    int parseDate(dynamic date) {
+      if (date == null) return DateTime.now().millisecondsSinceEpoch;
+      if (date is int) return date;
+      if (date is String) {
+        try {
+          return DateTime.parse(date).millisecondsSinceEpoch;
+        } catch (_) {
+          return DateTime.now().millisecondsSinceEpoch;
+        }
+      }
+      return DateTime.now().millisecondsSinceEpoch;
+    }
+
     return IssueCommentModel(
       id: json['id']?.toString() ?? '',
-      issueLocalId: json['issue_local_id']?.toString() ?? json['issueLocalId']?.toString() ?? json['issue_id']?.toString() ?? '',
-      authorId: json['author_id']?.toString() ?? json['authorId']?.toString() ?? '',
-      body: json['body'] ?? json['content'] ?? '',
-      createdAt:
-          json['created_at'] ??
-          json['createdAt'] ??
-          DateTime.now().millisecondsSinceEpoch,
-      serverId: json['server_id']?.toString() ?? json['serverId']?.toString() ?? json['id']?.toString(),
-      serverCreatedAt: json['server_created_at'] ?? json['serverCreatedAt'],
+      issueLocalId: json['issue_local_id']?.toString() ??
+          json['issueLocalId']?.toString() ??
+          json['issue_id']?.toString() ??
+          '',
+      authorId:
+          json['author_id']?.toString() ?? json['authorId']?.toString() ?? '',
+      content: json['content'] ?? json['body'] ?? '',
+      type: json['type']?.toString(),
+      author: json['author'] is Map ? Map<String, dynamic>.from(json['author']) : null,
+      createdAt: parseDate(json['created_at'] ?? json['createdAt']),
+      serverId: json['server_id']?.toString() ??
+          json['serverId']?.toString() ??
+          json['id']?.toString(),
+      serverUpdatedAt: json['server_updated_at'] ?? json['serverUpdatedAt'],
       status: json['status'] ?? 'SYNCED',
     );
   }
 
   /// Convert to JSON (for API requests).
   Map<String, dynamic> toJson() {
-    return {'body': body, 'author_id': authorId};
+    return {
+      'content': content,
+      if (type != null) 'type': type,
+    };
   }
 
   /// Convert from domain entity.
@@ -51,10 +77,12 @@ class IssueCommentModel {
       id: entity.id,
       issueLocalId: entity.issueLocalId,
       authorId: entity.authorId,
-      body: entity.body,
+      content: entity.content,
+      type: entity.type,
+      author: entity.author,
       createdAt: entity.createdAt,
       serverId: entity.serverId,
-      serverCreatedAt: entity.serverCreatedAt,
+      serverUpdatedAt: entity.serverUpdatedAt,
       status: entity.status,
     );
   }
@@ -65,10 +93,12 @@ class IssueCommentModel {
       id: id,
       issueLocalId: issueLocalId,
       authorId: authorId,
-      body: body,
+      content: content,
+      type: type,
+      author: author,
       createdAt: createdAt,
       serverId: serverId,
-      serverCreatedAt: serverCreatedAt,
+      serverUpdatedAt: serverUpdatedAt,
       status: status,
     );
   }

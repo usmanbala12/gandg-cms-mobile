@@ -6,7 +6,6 @@ import '../../../authentication/presentation/bloc/auth/auth_bloc.dart';
 import '../../../authentication/presentation/bloc/auth/auth_event.dart';
 import '../cubit/profile_cubit.dart';
 import '../widgets/logout_section.dart';
-import '../widgets/notification_preferences_section.dart';
 import '../widgets/profile_header.dart';
 import '../widgets/storage_management_section.dart';
 import '../widgets/sync_status_section.dart';
@@ -132,14 +131,6 @@ class _ProfilePageContent extends StatelessWidget {
                     // User profile header
                     ProfileHeader(user: state.user),
                     const SizedBox(height: 8),
-
-                    // Notification preferences
-                    NotificationPreferencesSection(
-                      preferences: state.preferences,
-                      onPreferencesChanged: (prefs) {
-                        context.read<ProfileCubit>().updatePreferences(prefs);
-                      },
-                    ),
 
                     // Sync status
                     SyncStatusSection(

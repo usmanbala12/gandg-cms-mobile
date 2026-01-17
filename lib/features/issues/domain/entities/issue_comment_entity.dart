@@ -3,7 +3,9 @@ class IssueCommentEntity {
   final String id;
   final String issueLocalId;
   final String authorId;
-  final String body;
+  final String content;
+  final String? type; // COMMENT/STATUS_CHANGE/ASSIGNMENT/ESCALATION
+  final Map<String, dynamic>? author;
   final int createdAt;
   final String? serverId;
   final int? serverCreatedAt;
@@ -13,7 +15,9 @@ class IssueCommentEntity {
     required this.id,
     required this.issueLocalId,
     required this.authorId,
-    required this.body,
+    required this.content,
+    this.type,
+    this.author,
     required this.createdAt,
     this.serverId,
     this.serverCreatedAt,
@@ -34,7 +38,9 @@ class IssueCommentEntity {
     String? id,
     String? issueLocalId,
     String? authorId,
-    String? body,
+    String? content,
+    String? type,
+    Map<String, dynamic>? author,
     int? createdAt,
     String? serverId,
     int? serverCreatedAt,
@@ -44,7 +50,9 @@ class IssueCommentEntity {
       id: id ?? this.id,
       issueLocalId: issueLocalId ?? this.issueLocalId,
       authorId: authorId ?? this.authorId,
-      body: body ?? this.body,
+      content: content ?? this.content,
+      type: type ?? this.type,
+      author: author ?? this.author,
       createdAt: createdAt ?? this.createdAt,
       serverId: serverId ?? this.serverId,
       serverCreatedAt: serverCreatedAt ?? this.serverCreatedAt,

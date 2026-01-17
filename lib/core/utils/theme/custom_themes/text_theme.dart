@@ -1,127 +1,129 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:field_link/core/utils/theme/design_system.dart';
 
 class TTextTheme {
   TTextTheme._();
 
   static TextTheme lightTextThem = TextTheme(
-    headlineLarge: const TextStyle().copyWith(
+    headlineLarge: GoogleFonts.poppins(
       fontSize: 32,
       fontWeight: FontWeight.bold,
-      color: Colors.black,
+      color: DesignSystem.textPrimaryLight,
     ),
-    headlineMedium: const TextStyle().copyWith(
+    headlineMedium: GoogleFonts.poppins(
       fontSize: 24,
       fontWeight: FontWeight.w600,
-      color: Colors.black,
+      color: DesignSystem.textPrimaryLight,
     ),
-    headlineSmall: const TextStyle().copyWith(
+    headlineSmall: GoogleFonts.poppins(
+      fontSize: 20,
+      fontWeight: FontWeight.w600,
+      color: DesignSystem.textPrimaryLight,
+    ),
+
+    titleLarge: GoogleFonts.poppins(
       fontSize: 18,
       fontWeight: FontWeight.w600,
-      color: Colors.black,
+      color: DesignSystem.textPrimaryLight,
     ),
-
-    titleLarge: const TextStyle().copyWith(
+    titleMedium: GoogleFonts.inter(
       fontSize: 16,
       fontWeight: FontWeight.w600,
-      color: Colors.black,
+      color: DesignSystem.textPrimaryLight,
     ),
-    titleMedium: const TextStyle().copyWith(
-      fontSize: 16,
+    titleSmall: GoogleFonts.inter(
+      fontSize: 14,
       fontWeight: FontWeight.w500,
-      color: Colors.black,
-    ),
-    titleSmall: const TextStyle().copyWith(
-      fontSize: 16,
-      fontWeight: FontWeight.w400,
-      color: Colors.black,
+      color: DesignSystem.textPrimaryLight,
     ),
 
-    bodyLarge: const TextStyle().copyWith(
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-      color: Colors.black,
+    bodyLarge: GoogleFonts.inter(
+      fontSize: 16,
+      fontWeight: FontWeight.normal,
+      color: DesignSystem.textPrimaryLight,
     ),
-    bodyMedium: const TextStyle().copyWith(
+    bodyMedium: GoogleFonts.inter(
       fontSize: 14,
       fontWeight: FontWeight.normal,
-      color: Colors.black,
+      color: DesignSystem.textPrimaryLight,
     ),
-    bodySmall: const TextStyle().copyWith(
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-      color: Colors.black,
+    bodySmall: GoogleFonts.inter(
+      fontSize: 12,
+      fontWeight: FontWeight.normal,
+      color: DesignSystem.textSecondaryLight,
     ),
 
-    labelLarge: const TextStyle().copyWith(
+    labelLarge: GoogleFonts.inter(
       fontSize: 12,
-      fontWeight: FontWeight.normal,
-      color: Colors.black,
+      fontWeight: FontWeight.w500,
+      color: DesignSystem.textPrimaryLight,
     ),
-    labelMedium: const TextStyle().copyWith(
-      fontSize: 12,
-      fontWeight: FontWeight.normal,
-      color: Colors.black,
+    labelMedium: GoogleFonts.inter(
+      fontSize: 11,
+      fontWeight: FontWeight.w500,
+      color: DesignSystem.textSecondaryLight,
     ),
   );
 
   static TextTheme darkTextTheme = TextTheme(
-    headlineLarge: const TextStyle().copyWith(
+    headlineLarge: GoogleFonts.poppins(
       fontSize: 32,
       fontWeight: FontWeight.bold,
-      color: Colors.white,
+      color: DesignSystem.textPrimaryDark,
     ),
-    headlineMedium: const TextStyle().copyWith(
+    headlineMedium: GoogleFonts.poppins(
       fontSize: 24,
       fontWeight: FontWeight.w600,
-      color: Colors.white,
+      color: DesignSystem.textPrimaryDark,
     ),
-    headlineSmall: const TextStyle().copyWith(
+    headlineSmall: GoogleFonts.poppins(
+      fontSize: 20,
+      fontWeight: FontWeight.w600,
+      color: DesignSystem.textPrimaryDark,
+    ),
+
+    titleLarge: GoogleFonts.poppins(
       fontSize: 18,
       fontWeight: FontWeight.w600,
-      color: Colors.white,
+      color: DesignSystem.textPrimaryDark,
     ),
-
-    titleLarge: const TextStyle().copyWith(
+    titleMedium: GoogleFonts.inter(
       fontSize: 16,
       fontWeight: FontWeight.w600,
-      color: Colors.white,
+      color: DesignSystem.textPrimaryDark,
     ),
-    titleMedium: const TextStyle().copyWith(
-      fontSize: 16,
+    titleSmall: GoogleFonts.inter(
+      fontSize: 14,
       fontWeight: FontWeight.w500,
-      color: Colors.white,
-    ),
-    titleSmall: const TextStyle().copyWith(
-      fontSize: 16,
-      fontWeight: FontWeight.w400,
-      color: Colors.white,
+      color: DesignSystem.textPrimaryDark,
     ),
 
-    bodyLarge: const TextStyle().copyWith(
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-      color: Colors.white,
+    bodyLarge: GoogleFonts.inter(
+      fontSize: 16,
+      fontWeight: FontWeight.normal,
+      color: DesignSystem.textPrimaryDark,
     ),
-    bodyMedium: const TextStyle().copyWith(
+    bodyMedium: GoogleFonts.inter(
       fontSize: 14,
       fontWeight: FontWeight.normal,
-      color: Colors.white,
+      color: DesignSystem.textPrimaryDark,
     ),
-    bodySmall: const TextStyle().copyWith(
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-      color: Colors.white,
+    bodySmall: GoogleFonts.inter(
+      fontSize: 12,
+      fontWeight: FontWeight.normal,
+      color: DesignSystem.textSecondaryDark,
     ),
 
-    labelLarge: const TextStyle().copyWith(
+    labelLarge: GoogleFonts.inter(
       fontSize: 12,
-      fontWeight: FontWeight.normal,
-      color: Colors.white,
+      fontWeight: FontWeight.w500,
+      color: DesignSystem.textPrimaryDark,
     ),
-    labelMedium: const TextStyle().copyWith(
-      fontSize: 12,
-      fontWeight: FontWeight.normal,
-      color: Colors.white,
+    labelMedium: GoogleFonts.inter(
+      fontSize: 11,
+      fontWeight: FontWeight.w500,
+      color: DesignSystem.textSecondaryDark,
     ),
   );
 }

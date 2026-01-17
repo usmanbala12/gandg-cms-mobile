@@ -1,6 +1,5 @@
 import 'package:dio/dio.dart';
 import '../models/user_profile_model.dart';
-import '../models/user_preferences_model.dart';
 
 /// Remote data source for profile-related API calls.
 class ProfileRemoteDataSource {
@@ -63,20 +62,5 @@ class ProfileRemoteDataSource {
     }
   }
 
-  /// Update notification preferences on server.
-  /// Calls PATCH /api/v1/users/me/preferences
-  Future<void> updateNotificationPreferences(
-    UserPreferencesModel preferences,
-  ) async {
-    try {
-      await dio.patch(
-        '/api/v1/users/me/preferences',
-        data: preferences.toJson(),
-      );
-    } on DioException catch (e) {
-      throw Exception(
-        'Failed to update notification preferences: ${e.message}',
-      );
-    }
-  }
 }
+

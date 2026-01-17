@@ -107,7 +107,7 @@ class ApiClient {
       logger.i('Created report: ${response.statusCode}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -132,7 +132,7 @@ class ApiClient {
       );
 
       if (response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -185,7 +185,7 @@ class ApiClient {
       logger.i('Uploaded media to project $projectId: ${response.statusCode}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -207,7 +207,7 @@ class ApiClient {
       logger.i('Synced batch for project $projectId: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -232,12 +232,7 @@ class ApiClient {
       );
 
       if (response.statusCode == 200) {
-        final data = response.data;
-        if (data is Map && data['conflicts'] is List) {
-          return List<Map<String, dynamic>>.from(data['conflicts']);
-        } else if (data is List) {
-          return List<Map<String, dynamic>>.from(data);
-        }
+        return _unwrapList(response.data);
       }
       return [];
     } catch (e) {
@@ -260,7 +255,7 @@ class ApiClient {
       logger.i('Resolved conflict $conflictId: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -283,7 +278,7 @@ class ApiClient {
       logger.i('Created issue in project $projectId: ${response.statusCode}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -309,7 +304,7 @@ class ApiClient {
       );
 
       if (response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -347,7 +342,7 @@ class ApiClient {
       logger.i('Patched issue status for $issueId: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -370,7 +365,7 @@ class ApiClient {
       logger.i('Created comment on issue $issueId: ${response.statusCode}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -392,7 +387,7 @@ class ApiClient {
       logger.i('Assigned issue $issueId: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -408,12 +403,7 @@ class ApiClient {
       logger.i('Fetched history for issue $issueId: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = response.data;
-        if (data is Map && data['data'] is List) {
-          return List<Map<String, dynamic>>.from(data['data']);
-        } else if (data is List) {
-          return List<Map<String, dynamic>>.from(data);
-        }
+        return _unwrapList(response.data);
       }
       return [];
     } catch (e) {
@@ -429,12 +419,7 @@ class ApiClient {
       logger.i('Fetched issue $issueId: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = response.data;
-        if (data is Map && data['data'] is Map) {
-          return Map<String, dynamic>.from(data['data']);
-        } else if (data is Map) {
-          return Map<String, dynamic>.from(data);
-        }
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -450,12 +435,7 @@ class ApiClient {
       logger.i('Fetched comments for issue $issueId: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = response.data;
-        if (data is Map && data['data'] is List) {
-          return List<Map<String, dynamic>>.from(data['data']);
-        } else if (data is List) {
-          return List<Map<String, dynamic>>.from(data);
-        }
+        return _unwrapList(response.data);
       }
       return [];
     } catch (e) {
@@ -490,7 +470,7 @@ class ApiClient {
       logger.i('Uploaded media for issue $issueId: ${response.statusCode}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        return response.data is Map ? Map<String, dynamic>.from(response.data) : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -551,48 +531,7 @@ class ApiClient {
       logger.i('💡 Fetched form templates: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = response.data;
-
-        // Log the data structure for debugging
-        logger.d('📊 Response data type: ${data.runtimeType}');
-        if (data is Map) {
-          logger.d('📊 Map keys: ${data.keys.toList()}');
-          if (data['data'] != null) {
-            logger.d('📊 data[\'data\'] type: ${data['data'].runtimeType}');
-            if (data['data'] is List) {
-              logger.d(
-                '📊 data[\'data\'] length: ${(data['data'] as List).length}',
-              );
-            }
-          }
-        }
-
-        // Handle paginated response: data -> data -> content
-        if (data is Map &&
-            data['data'] is Map &&
-            data['data']['content'] is List) {
-          final templates = List<Map<String, dynamic>>.from(
-            data['data']['content'],
-          );
-          logger.i(
-            '✅ Returning ${templates.length} templates from data.data.content',
-          );
-          return templates;
-        }
-        // Handle direct list response: data -> data
-        if (data is Map && data['data'] is List) {
-          final templates = List<Map<String, dynamic>>.from(data['data']);
-          logger.i('✅ Returning ${templates.length} templates from data.data');
-          return templates;
-        } else if (data is List) {
-          final templates = List<Map<String, dynamic>>.from(data);
-          logger.i(
-            '✅ Returning ${templates.length} templates from direct list',
-          );
-          return templates;
-        }
-
-        logger.w('⚠️ Response structure did not match any expected pattern');
+        return _unwrapList(response.data);
       }
       return [];
     } catch (e) {
@@ -608,11 +547,7 @@ class ApiClient {
       logger.i('Fetched template $templateId: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        final data = response.data;
-        if (data is Map && data['data'] != null) {
-          return Map<String, dynamic>.from(data['data']);
-        }
-        return data is Map ? Map<String, dynamic>.from(data) : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -638,17 +573,7 @@ class ApiClient {
       );
 
       if (response.statusCode == 200) {
-        final data = response.data;
-        if (data is Map &&
-            data['data'] is Map &&
-            data['data']['content'] is List) {
-          return List<Map<String, dynamic>>.from(data['data']['content']);
-        }
-        if (data is Map && data['data'] is List) {
-          return List<Map<String, dynamic>>.from(data['data']);
-        } else if (data is List) {
-          return List<Map<String, dynamic>>.from(data);
-        }
+        return _unwrapList(response.data);
       }
       return [];
     } catch (e) {
@@ -671,7 +596,7 @@ class ApiClient {
       );
 
       if (response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -741,7 +666,7 @@ class ApiClient {
       logger.i('Created request in project $projectId: ${response.statusCode}');
 
       if (response.statusCode == 201 || response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -758,7 +683,7 @@ class ApiClient {
       logger.i('Fetched request $requestId: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
@@ -781,12 +706,130 @@ class ApiClient {
       logger.i('Updated request $requestId: ${response.statusCode}');
 
       if (response.statusCode == 200) {
-        return response.data is Map ? response.data : {};
+        return _unwrapMap(response.data);
       }
       return {};
     } catch (e) {
       logger.e('Error updating request $requestId: $e');
       rethrow;
     }
+  }
+
+  // ========== NOTIFICATION ENDPOINTS ==========
+
+  /// Fetch paginated notifications for the current user.
+  /// Endpoint: GET /api/v1/notifications
+  Future<List<Map<String, dynamic>>> fetchNotifications({
+    int page = 0,
+    int size = 20,
+    bool unreadOnly = false,
+    String sortBy = 'createdAt',
+    String sortDir = 'desc',
+  }) async {
+    try {
+      final response = await dio.get(
+        '/api/v1/notifications',
+        queryParameters: {
+          'page': page,
+          'size': size,
+          'unreadOnly': unreadOnly,
+          'sortBy': sortBy,
+          'sortDir': sortDir,
+        },
+      );
+      logger.i('Fetched notifications: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return _unwrapList(response.data);
+      }
+      return [];
+    } catch (e) {
+      logger.e('Error fetching notifications: $e');
+      rethrow;
+    }
+  }
+
+  /// Get the count of unread notifications.
+  /// Endpoint: GET /api/v1/notifications/count
+  Future<int> fetchNotificationUnreadCount() async {
+    try {
+      final response = await dio.get('/api/v1/notifications/count');
+      logger.i('Fetched notification count: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = _unwrapMap(response.data);
+        return (data['unreadCount'] as num?)?.toInt() ?? 0;
+      }
+      return 0;
+    } catch (e) {
+      logger.e('Error fetching notification count: $e');
+      rethrow;
+    }
+  }
+
+  /// Mark a specific notification as read.
+  /// Endpoint: POST /api/v1/notifications/{id}/read
+  Future<void> markNotificationAsRead(String notificationId) async {
+    try {
+      final response = await dio.post(
+        '/api/v1/notifications/$notificationId/read',
+      );
+      logger.i(
+        'Marked notification $notificationId as read: ${response.statusCode}',
+      );
+    } catch (e) {
+      logger.e('Error marking notification $notificationId as read: $e');
+      rethrow;
+    }
+  }
+
+  /// Mark all notifications as read for the current user.
+  /// Endpoint: POST /api/v1/notifications/mark-all-read
+  Future<void> markAllNotificationsAsRead() async {
+    try {
+      final response = await dio.post('/api/v1/notifications/mark-all-read');
+      logger.i('Marked all notifications as read: ${response.statusCode}');
+    } catch (e) {
+      logger.e('Error marking all notifications as read: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete a notification.
+  /// Endpoint: DELETE /api/v1/notifications/{id}
+  Future<void> deleteNotification(String notificationId) async {
+    try {
+      final response = await dio.delete(
+        '/api/v1/notifications/$notificationId',
+      );
+      logger.i(
+        'Deleted notification $notificationId: ${response.statusCode}',
+      );
+    } catch (e) {
+      logger.e('Error deleting notification $notificationId: $e');
+      rethrow;
+    }
+  }
+
+  // ========== UTILS ==========
+
+  Map<String, dynamic> _unwrapMap(dynamic data) {
+    if (data is Map && data['data'] is Map) {
+      return Map<String, dynamic>.from(data['data']);
+    }
+    return data is Map ? Map<String, dynamic>.from(data) : {};
+  }
+
+  List<Map<String, dynamic>> _unwrapList(dynamic data) {
+    if (data is Map && data['data'] is Map && data['data']['content'] is List) {
+      return List<Map<String, dynamic>>.from(data['data']['content']);
+    }
+    if (data is Map && data['data'] is List) {
+      return List<Map<String, dynamic>>.from(data['data']);
+    }
+    if (data is List) {
+      return List<Map<String, dynamic>>.from(data);
+    }
+    return [];
   }
 }

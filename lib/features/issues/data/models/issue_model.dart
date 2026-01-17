@@ -12,12 +12,16 @@ class IssueModel {
   final String? status;
   final String? category;
   final String? location;
-  final int? dueDate;
+  final String? dueDate;
   final int createdAt;
   final int updatedAt;
   final String? serverId;
   final int? serverUpdatedAt;
   final String? meta;
+  final String? issueNumber;
+  final Map<String, dynamic>? author;
+  final Map<String, dynamic>? assignee;
+  final List<Map<String, dynamic>>? media;
 
   const IssueModel({
     required this.id,
@@ -35,32 +39,73 @@ class IssueModel {
     this.serverId,
     this.serverUpdatedAt,
     this.meta,
+    this.issueNumber,
+    this.author,
+    this.assignee,
+    this.media,
   });
 
   /// Convert from JSON (server response).
-  factory IssueModel.fromJson(Map<String, dynamic> json) {
+  factory IssueModel.fromJson(Map<String, dynamic> json, {String? projectId}) {
+    // Parse dates which could be ISO8601 strings or milliseconds
+    int parseDate(dynamic date) {
+      if (date == null) return DateTime.now().millisecondsSinceEpoch;
+      if (date is int) return date;
+      if (date is String) {
+        try {
+          return DateTime.parse(date).millisecondsSinceEpoch;
+        } catch (_) {
+          return DateTime.now().millisecondsSinceEpoch;
+        }
+      }
+      return DateTime.now().millisecondsSinceEpoch;
+    }
+
+    // Helper to parse Map
+    Map<String, dynamic>? parseMap(dynamic source) {
+      if (source is Map) return Map<String, dynamic>.from(source);
+      return null;
+    }
+
+    // Helper to parse List of Maps
+    List<Map<String, dynamic>>? parseMedia(dynamic source) {
+      if (source is List) {
+        return source
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+      return null;
+    }
+
     return IssueModel(
       id: json['id']?.toString() ?? '',
-      projectId: json['project_id']?.toString() ?? json['projectId']?.toString() ?? '',
+      projectId:
+          projectId ??
+          json['project_id']?.toString() ??
+          json['projectId']?.toString() ??
+          '',
       title: json['title'] ?? '',
       description: json['description'],
       priority: json['priority'],
-      assigneeId: json['assignee_id']?.toString() ?? json['assigneeId']?.toString(),
+      assigneeId:
+          json['assignee_id']?.toString() ?? json['assigneeId']?.toString(),
       status: json['status'],
       category: json['category'],
       location: json['location'],
-      dueDate: json['due_date'] ?? json['dueDate'],
-      createdAt:
-          json['created_at'] ??
-          json['createdAt'] ??
-          DateTime.now().millisecondsSinceEpoch,
-      updatedAt:
-          json['updated_at'] ??
-          json['updatedAt'] ??
-          DateTime.now().millisecondsSinceEpoch,
-      serverId: json['server_id']?.toString() ?? json['serverId']?.toString() ?? json['id']?.toString(),
+      dueDate: json['due_date']?.toString() ?? json['dueDate']?.toString(),
+      createdAt: parseDate(json['created_at'] ?? json['createdAt']),
+      updatedAt: parseDate(json['updated_at'] ?? json['updatedAt']),
+      serverId:
+          json['server_id']?.toString() ??
+          json['serverId']?.toString() ??
+          json['id']?.toString(),
       serverUpdatedAt: json['server_updated_at'] ?? json['serverUpdatedAt'],
-      meta: json['meta'],
+      meta: json['meta']?.toString(),
+      issueNumber: json['issueNumber']?.toString() ?? json['issue_number']?.toString(),
+      author: parseMap(json['author']),
+      assignee: parseMap(json['assignee']),
+      media: parseMedia(json['media']),
     );
   }
 
@@ -70,11 +115,11 @@ class IssueModel {
       'title': title,
       if (description != null) 'description': description,
       if (priority != null) 'priority': priority,
-      if (assigneeId != null) 'assignee_id': assigneeId,
+      if (assigneeId != null) 'assigneeId': assigneeId,
       if (status != null) 'status': status,
       if (category != null) 'category': category,
       if (location != null) 'location': location,
-      if (dueDate != null) 'due_date': dueDate,
+      if (dueDate != null) 'dueDate': dueDate,
       if (meta != null) 'meta': meta,
     };
   }
@@ -97,6 +142,10 @@ class IssueModel {
       serverId: entity.serverId,
       serverUpdatedAt: entity.serverUpdatedAt,
       meta: entity.meta,
+      issueNumber: entity.issueNumber,
+      author: entity.author,
+      assignee: entity.assignee,
+      media: entity.media,
     );
   }
 
@@ -118,6 +167,10 @@ class IssueModel {
       serverId: serverId,
       serverUpdatedAt: serverUpdatedAt,
       meta: meta,
+      issueNumber: issueNumber,
+      author: author,
+      assignee: assignee,
+      media: media,
     );
   }
 }

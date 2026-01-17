@@ -21,7 +21,6 @@ class ProfileLoading extends ProfileState {
 /// Loaded state with all profile data.
 class ProfileLoaded extends ProfileState {
   final UserProfileEntity? user;
-  final UserPreferencesEntity preferences;
   final SyncStatusEntity syncStatus;
   final StorageStatsEntity storageStats;
   final bool isRefreshingUser;
@@ -31,7 +30,6 @@ class ProfileLoaded extends ProfileState {
 
   const ProfileLoaded({
     this.user,
-    required this.preferences,
     required this.syncStatus,
     required this.storageStats,
     this.isRefreshingUser = false,
@@ -42,7 +40,6 @@ class ProfileLoaded extends ProfileState {
 
   ProfileLoaded copyWith({
     UserProfileEntity? user,
-    UserPreferencesEntity? preferences,
     SyncStatusEntity? syncStatus,
     StorageStatsEntity? storageStats,
     bool? isRefreshingUser,
@@ -52,7 +49,6 @@ class ProfileLoaded extends ProfileState {
   }) {
     return ProfileLoaded(
       user: user ?? this.user,
-      preferences: preferences ?? this.preferences,
       syncStatus: syncStatus ?? this.syncStatus,
       storageStats: storageStats ?? this.storageStats,
       isRefreshingUser: isRefreshingUser ?? this.isRefreshingUser,
@@ -65,7 +61,6 @@ class ProfileLoaded extends ProfileState {
   @override
   List<Object?> get props => [
         user,
-        preferences,
         syncStatus,
         storageStats,
         isRefreshingUser,

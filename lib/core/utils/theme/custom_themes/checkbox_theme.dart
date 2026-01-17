@@ -1,3 +1,4 @@
+import 'package:field_link/core/utils/theme/design_system.dart';
 import 'package:flutter/material.dart';
 
 class TCheckboxTheme {
@@ -7,14 +8,14 @@ class TCheckboxTheme {
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
     checkColor: WidgetStateProperty.resolveWith((states) {
       if (states.contains(WidgetState.selected)) {
-        return Colors.white;
+        return DesignSystem.onPrimary;
       } else {
         return Colors.black;
       }
     }),
     fillColor: WidgetStateProperty.resolveWith((states) {
       if (states.contains(WidgetState.selected)) {
-        return Colors.blue;
+        return DesignSystem.primary;
       }
       return Colors.transparent;
     }),
@@ -24,14 +25,14 @@ class TCheckboxTheme {
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
     checkColor: WidgetStateProperty.resolveWith((states) {
       if (states.contains(WidgetState.selected)) {
-        return Colors.white;
+        return DesignSystem.onPrimary;
       } else {
         return Colors.black;
       }
     }),
     fillColor: WidgetStateProperty.resolveWith((states) {
       if (states.contains(WidgetState.selected)) {
-        return Colors.blue;
+        return DesignSystem.primary;
       }
       return Colors.transparent;
     }),

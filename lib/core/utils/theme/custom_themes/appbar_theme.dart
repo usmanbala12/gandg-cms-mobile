@@ -1,3 +1,4 @@
+import 'package:field_link/core/utils/theme/design_system.dart';
 import 'package:flutter/material.dart';
 
 class TAppBarTheme {
@@ -8,12 +9,13 @@ class TAppBarTheme {
     centerTitle: false,
     backgroundColor: Colors.transparent,
     surfaceTintColor: Colors.transparent,
-    iconTheme: IconThemeData(color: Colors.black, size: 24),
-    actionsIconTheme: IconThemeData(color: Colors.black, size: 24),
+    iconTheme: IconThemeData(color: DesignSystem.textPrimaryLight, size: 24),
+    actionsIconTheme: IconThemeData(color: DesignSystem.textPrimaryLight, size: 24),
     titleTextStyle: TextStyle(
-      color: Colors.black,
+      color: DesignSystem.textPrimaryLight,
       fontSize: 18,
       fontWeight: FontWeight.w600,
+      fontFamily: 'Inter',
     ),
   );
 
@@ -22,12 +24,13 @@ class TAppBarTheme {
     centerTitle: false,
     backgroundColor: Colors.transparent,
     surfaceTintColor: Colors.transparent,
-    iconTheme: IconThemeData(color: Colors.white, size: 24),
-    actionsIconTheme: IconThemeData(color: Colors.white, size: 24),
+    iconTheme: IconThemeData(color: DesignSystem.textPrimaryDark, size: 24),
+    actionsIconTheme: IconThemeData(color: DesignSystem.textPrimaryDark, size: 24),
     titleTextStyle: TextStyle(
-      color: Colors.white,
+      color: DesignSystem.textPrimaryDark,
       fontSize: 18,
       fontWeight: FontWeight.w600,
+      fontFamily: 'Inter',
     ),
   );
 }

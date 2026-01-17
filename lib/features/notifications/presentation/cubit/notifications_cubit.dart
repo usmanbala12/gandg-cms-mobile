@@ -1,7 +1,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
 
-import '../../../../core/domain/repository_result.dart';
+import 'dart:async';
 import '../../domain/repositories/notification_repository.dart';
 import '../../domain/entities/notification_entity.dart';
 
@@ -9,41 +9,102 @@ part 'notifications_state.dart';
 
 class NotificationsCubit extends Cubit<NotificationsState> {
   final NotificationRepository repository;
+  Timer? _pollingTimer;
 
   NotificationsCubit({required this.repository})
       : super(NotificationsInitial());
 
-  Future<void> loadNotifications(String userId) async {
+  /// Load notifications with optional pagination parameters.
+  Future<void> loadNotifications({
+    int page = 0,
+    int size = 20,
+    bool unreadOnly = false,
+  }) async {
     emit(NotificationsLoading());
 
     try {
-      final result = await repository.getNotifications(userId);
+      final result = await repository.getNotifications(
+        page: page,
+        size: size,
+        unreadOnly: unreadOnly,
+      );
+      final countResult = await repository.getUnreadCount();
+
       emit(NotificationsLoaded(
         notifications: result.data,
-        source: result.source,
+        unreadCount: countResult.data,
       ));
     } catch (e) {
       emit(NotificationsError(message: e.toString()));
     }
   }
 
-  Future<void> markAsRead(String id, String userId) async {
+  /// Fetch only the unread count (for badges/polling).
+  Future<int> fetchUnreadCount() async {
     try {
-      await repository.markAsRead(id);
-      // Reload to update UI
-      await loadNotifications(userId);
+      final result = await repository.getUnreadCount();
+      final currentState = state;
+      if (currentState is NotificationsLoaded) {
+        emit(NotificationsLoaded(
+          notifications: currentState.notifications,
+          unreadCount: result.data,
+        ));
+      }
+      return result.data;
     } catch (e) {
-      // Optimistic update failed?
-      // For now just reload or ignore
+      return 0;
     }
   }
 
-  Future<void> markAllAsRead(String userId) async {
+  /// Mark a specific notification as read.
+  Future<void> markAsRead(String id) async {
     try {
-      await repository.markAllAsRead(userId);
-      await loadNotifications(userId);
+      await repository.markAsRead(id);
+      // Reload to update UI
+      await loadNotifications();
+    } catch (e) {
+      // Optimistic update failed, just reload
+    }
+  }
+
+  /// Mark all notifications as read.
+  Future<void> markAllAsRead() async {
+    try {
+      await repository.markAllAsRead();
+      await loadNotifications();
     } catch (e) {
       // Ignore
     }
+  }
+
+  /// Delete a notification.
+  Future<void> deleteNotification(String id) async {
+    try {
+      await repository.deleteNotification(id);
+      await loadNotifications();
+    } catch (e) {
+      // Ignore
+    }
+  }
+
+  /// Start polling for unread count every [seconds].
+  void startPolling({int seconds = 30}) {
+    _pollingTimer?.cancel();
+    _pollingTimer = Timer.periodic(
+      Duration(seconds: seconds),
+      (_) => fetchUnreadCount(),
+    );
+  }
+
+  /// Stop polling.
+  void stopPolling() {
+    _pollingTimer?.cancel();
+    _pollingTimer = null;
+  }
+
+  @override
+  Future<void> close() {
+    _pollingTimer?.cancel();
+    return super.close();
   }
 }

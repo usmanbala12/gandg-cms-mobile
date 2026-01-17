@@ -2,59 +2,62 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../network/dio_client.dart';
-import '../network/api_client.dart';
-import '../network/network_info.dart';
-import '../services/token_storage_service.dart';
-import '../services/location_service.dart';
-import '../utils/biometrics/biometric_auth_service.dart';
-import '../db/app_database.dart';
-import '../db/daos/project_dao.dart';
-import '../db/daos/sync_queue_dao.dart';
-import '../db/daos/meta_dao.dart';
-import '../db/daos/request_dao.dart';
-import '../db/daos/user_dao.dart';
-import '../sync/sync_manager.dart';
-import '../../features/authentication/data/datasources/auth_remote_datasource.dart';
-import '../../features/authentication/data/repositories/auth_repository_impl.dart';
-import '../../features/authentication/domain/repositories/auth_repository.dart';
-import '../../features/authentication/domain/usecases/login_usecase.dart';
-import '../../features/authentication/domain/usecases/logout_usecase.dart';
-import '../../features/authentication/domain/usecases/verify_mfa_usecase.dart';
-import '../../features/authentication/domain/usecases/refresh_token_usecase.dart';
-import '../../features/authentication/domain/usecases/get_current_user_usecase.dart';
-import '../../features/authentication/domain/usecases/setup_mfa_usecase.dart';
-import '../../features/authentication/domain/usecases/enable_mfa_usecase.dart';
-import '../../features/authentication/domain/usecases/disable_mfa_usecase.dart';
-import '../../features/authentication/domain/usecases/request_password_reset_usecase.dart';
-import '../../features/authentication/domain/usecases/confirm_password_reset_usecase.dart';
-import '../../features/authentication/presentation/bloc/auth/auth_bloc.dart';
-import '../../core/services/token_refresh_service.dart';
-import '../../features/dashboard/data/repositories/dashboard_repository_impl.dart';
-import '../../features/dashboard/presentation/bloc/dashboard_cubit.dart';
-import '../../features/reports/presentation/cubit/reports_cubit.dart';
-import '../../features/reports/data/repositories/report_repository_impl.dart';
-import '../../features/reports/data/datasources/report_remote_datasource.dart';
-import '../../features/issues/data/datasources/issue_remote_datasource.dart';
-import '../../features/issues/data/repositories/issue_repository_impl.dart';
-import '../../features/issues/domain/repositories/issue_repository.dart';
+import 'package:field_link/core/network/dio_client.dart';
+import 'package:field_link/core/network/api_client.dart';
+import 'package:field_link/core/network/network_info.dart';
+import 'package:field_link/core/services/token_storage_service.dart';
+import 'package:field_link/core/services/location_service.dart';
+import 'package:field_link/core/utils/biometrics/biometric_auth_service.dart';
+import 'package:field_link/core/db/app_database.dart';
+import 'package:field_link/core/db/daos/project_dao.dart';
+import 'package:field_link/core/db/daos/sync_queue_dao.dart';
+import 'package:field_link/core/db/daos/meta_dao.dart';
+import 'package:field_link/core/db/daos/request_dao.dart';
+import 'package:field_link/core/db/daos/user_dao.dart';
+import 'package:field_link/core/sync/sync_manager.dart';
+import 'package:field_link/features/authentication/data/datasources/auth_remote_datasource.dart';
+import 'package:field_link/features/authentication/data/repositories/auth_repository_impl.dart';
+import 'package:field_link/features/authentication/domain/repositories/auth_repository.dart';
+import 'package:field_link/features/authentication/domain/usecases/login_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/logout_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/verify_mfa_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/refresh_token_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/get_current_user_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/setup_mfa_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/enable_mfa_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/disable_mfa_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/request_password_reset_usecase.dart';
+import 'package:field_link/features/authentication/domain/usecases/confirm_password_reset_usecase.dart';
+import 'package:field_link/features/authentication/presentation/bloc/auth/auth_bloc.dart';
+import 'package:field_link/core/services/token_refresh_service.dart';
+import 'package:field_link/features/dashboard/data/repositories/dashboard_repository_impl.dart';
+import 'package:field_link/features/dashboard/presentation/bloc/dashboard_cubit.dart';
+import 'package:field_link/features/reports/presentation/cubit/reports_cubit.dart';
+import 'package:field_link/features/reports/data/repositories/report_repository_impl.dart';
+import 'package:field_link/features/reports/data/datasources/report_remote_datasource.dart';
+import 'package:field_link/features/issues/data/datasources/issue_remote_datasource.dart';
+import 'package:field_link/features/issues/data/repositories/issue_repository_impl.dart';
+import 'package:field_link/features/issues/domain/repositories/issue_repository.dart';
 
-import '../../features/issues/presentation/bloc/issues_bloc.dart';
-import '../../features/requests/data/datasources/request_remote_datasource.dart';
-import '../../features/requests/data/repositories/request_repository_impl.dart';
-import '../../features/requests/domain/repositories/request_repository.dart';
-import '../../features/requests/presentation/cubit/request_create_cubit.dart';
-import '../../features/requests/presentation/cubit/requests_cubit.dart';
-import '../../features/notifications/data/datasources/notification_remote_datasource.dart';
-import '../../features/notifications/data/repositories/notification_repository_impl.dart';
-import '../../features/notifications/domain/repositories/notification_repository.dart';
-import '../../features/notifications/presentation/cubit/notifications_cubit.dart';
-import '../../features/settings/presentation/cubit/settings_cubit.dart';
-import '../../features/profile/data/datasources/profile_remote_datasource.dart';
-import '../../features/profile/data/repositories/profile_repository_impl.dart';
-import '../../features/profile/domain/repositories/profile_repository.dart';
-import '../../features/profile/presentation/cubit/profile_cubit.dart';
-import '../../features/reports/domain/repositories/report_repository.dart';
+import 'package:field_link/features/issues/presentation/bloc/issues_bloc.dart';
+import 'package:field_link/features/requests/data/datasources/request_remote_datasource.dart';
+import 'package:field_link/features/requests/data/repositories/request_repository_impl.dart';
+import 'package:field_link/features/requests/domain/repositories/request_repository.dart';
+import 'package:field_link/features/requests/presentation/cubit/request_create_cubit.dart';
+import 'package:field_link/features/requests/presentation/cubit/requests_cubit.dart';
+import 'package:field_link/features/notifications/data/datasources/notification_remote_datasource.dart';
+import 'package:field_link/features/notifications/data/repositories/notification_repository_impl.dart';
+import 'package:field_link/features/notifications/domain/repositories/notification_repository.dart';
+import 'package:field_link/features/notifications/presentation/cubit/notifications_cubit.dart';
+import 'package:field_link/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:field_link/features/profile/data/datasources/profile_remote_datasource.dart';
+import 'package:field_link/features/profile/data/repositories/profile_repository_impl.dart';
+import 'package:field_link/features/profile/domain/repositories/profile_repository.dart';
+import 'package:field_link/features/profile/presentation/cubit/profile_cubit.dart';
+import 'package:field_link/features/reports/domain/repositories/report_repository.dart';
+import 'package:field_link/features/media/data/datasources/media_remote_datasource.dart';
+import 'package:field_link/features/media/data/repositories/media_repository_impl.dart';
+import 'package:field_link/features/media/domain/repositories/media_repository.dart';
 
 final sl = GetIt.instance;
 
@@ -139,6 +142,15 @@ Future<void> initDependencies({required String baseUrl}) async {
       tokenStorageService: sl(),
       networkInfo: sl(),
     ),
+  );
+
+  // Features - Media
+  sl.registerLazySingleton<MediaRemoteDataSource>(
+    () => MediaRemoteDataSource(dio: sl()),
+  );
+
+  sl.registerLazySingleton<MediaRepository>(
+    () => MediaRepositoryImpl(remoteDataSource: sl()),
   );
 
   // Features - Authentication

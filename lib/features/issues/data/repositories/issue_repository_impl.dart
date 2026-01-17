@@ -65,7 +65,7 @@ class IssueRepositoryImpl implements IssueRepository {
       );
 
       final entities = remoteData
-          .map((data) => IssueModel.fromJson(data).toEntity())
+          .map((data) => IssueModel.fromJson(data, projectId: projectId).toEntity())
           .toList();
 
       logger.i('✅ Fetched ${entities.length} issues from remote');
@@ -91,7 +91,8 @@ class IssueRepositoryImpl implements IssueRepository {
 
     try {
       final data = await remoteDataSource.fetchIssue(localId);
-      return IssueModel.fromJson(data).toEntity();
+      final projectId = data['project_id'] ?? data['project']?['id'];
+      return IssueModel.fromJson(data, projectId: projectId?.toString()).toEntity();
     } catch (e) {
       logger.e('Error fetching issue $localId: $e');
       return null;
@@ -99,9 +100,8 @@ class IssueRepositoryImpl implements IssueRepository {
   }
 
   @override
-  Stream<IssueEntity?> watchIssue(String localId) {
-    // Remote-only: no local stream
-    return Stream.value(null);
+  Stream<IssueEntity?> watchIssue(String localId) async* {
+    yield await getIssue(localId);
   }
 
   @override
@@ -113,8 +113,9 @@ class IssueRepositoryImpl implements IssueRepository {
     String? assigneeId,
     String? category,
     String? location,
-    int? dueDate,
+    String? dueDate,
     String? meta,
+    List<String>? mediaIds,
   }) async {
     final isOnline = await networkInfo.isOnline();
     if (!isOnline) {
@@ -126,11 +127,12 @@ class IssueRepositoryImpl implements IssueRepository {
         'title': title,
         if (description != null) 'description': description,
         if (priority != null) 'priority': priority,
-        if (assigneeId != null) 'assignee_id': assigneeId,
+        if (assigneeId != null) 'assigneeId': assigneeId,
         if (category != null) 'category': category,
         if (location != null) 'location': location,
-        if (dueDate != null) 'due_date': dueDate,
+        if (dueDate != null) 'dueDate': dueDate,
         if (meta != null) 'meta': meta,
+        if (mediaIds != null && mediaIds.isNotEmpty) 'mediaIds': mediaIds,
       });
 
       final serverId = response['id'] ?? response['data']?['id'];
@@ -151,7 +153,7 @@ class IssueRepositoryImpl implements IssueRepository {
     String? assigneeId,
     String? category,
     String? location,
-    int? dueDate,
+    String? dueDate,
     String? meta,
   }) async {
     final isOnline = await networkInfo.isOnline();
@@ -168,10 +170,10 @@ class IssueRepositoryImpl implements IssueRepository {
         if (title != null) 'title': title,
         if (description != null) 'description': description,
         if (priority != null) 'priority': priority,
-        if (assigneeId != null) 'assignee_id': assigneeId,
+        if (assigneeId != null) 'assigneeId': assigneeId,
         if (category != null) 'category': category,
         if (location != null) 'location': location,
-        if (dueDate != null) 'due_date': dueDate,
+        if (dueDate != null) 'dueDate': dueDate,
         if (meta != null) 'meta': meta,
       });
       logger.i('✅ Issue updated: $localId');
@@ -209,8 +211,9 @@ class IssueRepositoryImpl implements IssueRepository {
   Future<void> addComment(
     String localIssueId,
     String text,
-    String authorId,
-  ) async {
+    String authorId, {
+    String? type,
+  }) async {
     final isOnline = await networkInfo.isOnline();
     if (!isOnline) {
       throw Exception('Cannot add comment while offline.');
@@ -218,8 +221,8 @@ class IssueRepositoryImpl implements IssueRepository {
 
     try {
       await remoteDataSource.createComment(localIssueId, {
-        'body': text,
-        'author_id': authorId,
+        'content': text,
+        if (type != null) 'type': type,
       });
       logger.i('✅ Comment added to issue: $localIssueId');
     } catch (e) {
@@ -234,19 +237,36 @@ class IssueRepositoryImpl implements IssueRepository {
     if (!isOnline) return [];
 
     try {
-      final data = await remoteDataSource.fetchIssueComments(issueLocalId);
-      return data
-          .map((item) => IssueCommentEntity(
-                id: item['id']?.toString() ?? '',
-                issueLocalId: issueLocalId,
-                authorId: item['author_id']?.toString() ?? '',
-                body: item['body'] ?? '',
-                createdAt: item['created_at'] is int
-                    ? item['created_at']
-                    : DateTime.now().millisecondsSinceEpoch,
-                status: 'SYNCED',
-              ))
-          .toList();
+      final items = await remoteDataSource.fetchIssueComments(issueLocalId);
+
+      return items.map((item) {
+        final rawDate = item['created_at'] ?? item['createdAt'];
+        int parsedDate;
+        if (rawDate is int) {
+          parsedDate = rawDate;
+        } else if (rawDate is String) {
+          parsedDate = DateTime.tryParse(rawDate)?.millisecondsSinceEpoch ??
+              DateTime.now().millisecondsSinceEpoch;
+        } else {
+          parsedDate = DateTime.now().millisecondsSinceEpoch;
+        }
+
+        final authorMap = item['author'] as Map<String, dynamic>?;
+
+        return IssueCommentEntity(
+          id: item['id']?.toString() ?? '',
+          issueLocalId: issueLocalId,
+          authorId: item['author_id']?.toString() ??
+              item['authorId']?.toString() ??
+              authorMap?['id']?.toString() ??
+              '',
+          content: item['content'] ?? item['body'] ?? '',
+          type: item['type']?.toString(),
+          author: authorMap,
+          createdAt: parsedDate,
+          status: 'SYNCED',
+        );
+      }).cast<IssueCommentEntity>().toList();
     } catch (e) {
       logger.e('Error fetching comments: $e');
       return [];
@@ -254,9 +274,8 @@ class IssueRepositoryImpl implements IssueRepository {
   }
 
   @override
-  Stream<List<IssueCommentEntity>> watchComments(String issueLocalId) {
-    // Remote-only: no local stream
-    return Stream.value([]);
+  Stream<List<IssueCommentEntity>> watchComments(String issueLocalId) async* {
+    yield await getComments(issueLocalId);
   }
 
   @override

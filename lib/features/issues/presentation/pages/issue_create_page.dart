@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
-import '../../domain/repositories/issue_repository.dart';
+import 'package:field_link/features/issues/domain/repositories/issue_repository.dart';
+import 'package:field_link/features/media/presentation/widgets/media_picker.dart';
+import 'package:field_link/features/media/presentation/cubit/media_uploader_cubit.dart';
+import 'package:field_link/features/media/domain/repositories/media_repository.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class IssueCreatePage extends StatefulWidget {
   final String projectId;
@@ -33,12 +37,27 @@ class _IssueCreatePageState extends State<IssueCreatePage> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit(BuildContext context) async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSubmitting = true);
 
     try {
+      final mediaCubit = context.read<MediaUploaderCubit>();
+      
+      // 1. Upload media to project
+      await mediaCubit.uploadFiles(
+        parentType: 'PROJECT',
+        parentId: widget.projectId,
+      );
+
+      final mediaState = mediaCubit.state;
+      List<String> mediaIds = [];
+      if (mediaState is MediaUploaderInProcess) {
+        mediaIds = mediaState.uploadedMedia.map((m) => m.id).toList();
+      }
+
+      // 2. Create issue with inline mediaIds (replaces deprecated associateMedia)
       await _repository.createIssue(
         projectId: widget.projectId,
         title: _titleController.text.trim(),
@@ -47,7 +66,8 @@ class _IssueCreatePageState extends State<IssueCreatePage> {
         category: _categoryController.text.trim().isEmpty
             ? null
             : _categoryController.text.trim(),
-        dueDate: _dueDate?.millisecondsSinceEpoch,
+        dueDate: _dueDate != null ? DateFormat('yyyy-MM-dd').format(_dueDate!) : null,
+        mediaIds: mediaIds.isNotEmpty ? mediaIds : null,
       );
 
       if (mounted) {
@@ -71,19 +91,30 @@ class _IssueCreatePageState extends State<IssueCreatePage> {
 
   @override
   Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => MediaUploaderCubit(
+        repository: GetIt.I<MediaRepository>(),
+      ),
+      child: _buildScaffold(context),
+    );
+  }
+
+  Widget _buildScaffold(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Issue'),
         actions: [
-          TextButton(
-            onPressed: _isSubmitting ? null : _submit,
-            child: _isSubmitting
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Save'),
+          Builder(
+            builder: (context) => TextButton(
+              onPressed: _isSubmitting ? null : () => _submit(context),
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Save'),
+            ),
           ),
         ],
       ),
@@ -169,6 +200,8 @@ class _IssueCreatePageState extends State<IssueCreatePage> {
                 }
               },
             ),
+            const Divider(height: 32),
+            const MediaPicker(),
           ],
         ),
       ),

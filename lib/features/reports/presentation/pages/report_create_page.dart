@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get_it/get_it.dart';
 
-import '../../../../core/services/location_service.dart';
-import '../cubit/report_form_cubit.dart';
-import '../widgets/template_selector.dart';
-import '../widgets/dynamic_form.dart';
-import '../../domain/repositories/report_repository.dart';
-import '../../../../features/dashboard/data/repositories/dashboard_repository_impl.dart';
+import 'package:field_link/core/services/location_service.dart';
+import 'package:field_link/features/reports/presentation/cubit/report_form_cubit.dart';
+import 'package:field_link/features/reports/presentation/widgets/template_selector.dart';
+import 'package:field_link/features/reports/presentation/widgets/dynamic_form.dart';
+import 'package:field_link/features/reports/domain/repositories/report_repository.dart';
+import 'package:field_link/features/dashboard/data/repositories/dashboard_repository_impl.dart';
+import 'package:field_link/features/media/domain/repositories/media_repository.dart';
 
 class ReportCreatePage extends StatelessWidget {
   const ReportCreatePage({super.key});
@@ -28,6 +29,7 @@ class ReportCreatePage extends StatelessWidget {
         return BlocProvider(
           create: (context) => ReportFormCubit(
             repository: GetIt.instance<ReportRepository>(),
+            mediaRepository: GetIt.instance<MediaRepository>(),
             locationService: GetIt.instance<LocationService>(),
           )..loadTemplates(projectId),
           child: const _ReportCreateView(),
@@ -81,6 +83,7 @@ class _ReportCreateView extends StatelessWidget {
               return DynamicForm(
                 template: state.selectedTemplate!,
                 onSubmit: (formData) {
+                  // Submit report - media paths are already in formData from MEDIA fields
                   context.read<ReportFormCubit>().submitReport(
                     projectId: state.projectId,
                     templateId: state.selectedTemplate!.id,

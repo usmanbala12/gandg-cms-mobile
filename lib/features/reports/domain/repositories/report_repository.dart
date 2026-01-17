@@ -27,12 +27,14 @@ abstract class ReportRepository {
   Future<List<FormTemplateEntity>> getTemplates({bool forceRefresh = false});
   Future<RepositoryResult<FormTemplateEntity>> getTemplate(String id);
 
-  /// Creates a report with the given data and returns the report ID
+  /// Creates a report with the given data and returns the report ID.
+  /// If [mediaIds] is provided, the media will be associated with the report.
   Future<String> createReportWithData({
     required String projectId,
     required String templateId,
     required Map<String, dynamic> submissionData,
     Map<String, dynamic>? location,
+    List<String>? mediaIds,
   });
 
   /// Fetches a single report by ID.

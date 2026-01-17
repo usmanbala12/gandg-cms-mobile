@@ -1,15 +1,15 @@
 import 'package:dio/dio.dart';
 import 'package:logger/logger.dart';
 
-import '../../../../core/domain/repository_result.dart';
-import '../../../../core/network/dio_exception_extension.dart';
-import '../../../../core/network/network_info.dart';
-import '../../domain/entities/report_entity.dart';
-import '../../domain/entities/form_template_entity.dart';
-import '../../domain/repositories/report_repository.dart';
-import '../datasources/report_remote_datasource.dart';
-import '../models/report_model.dart';
-import '../models/form_template_model.dart';
+import 'package:field_link/core/domain/repository_result.dart';
+import 'package:field_link/core/network/dio_exception_extension.dart';
+import 'package:field_link/core/network/network_info.dart';
+import 'package:field_link/features/reports/domain/entities/report_entity.dart';
+import 'package:field_link/features/reports/domain/entities/form_template_entity.dart';
+import 'package:field_link/features/reports/domain/repositories/report_repository.dart';
+import 'package:field_link/features/reports/data/datasources/report_remote_datasource.dart';
+import 'package:field_link/features/reports/data/models/report_model.dart';
+import 'package:field_link/features/reports/data/models/form_template_model.dart';
 
 /// Simplified ReportRepository - remote only, no local caching.
 class ReportRepositoryImpl implements ReportRepository {
@@ -201,6 +201,7 @@ class ReportRepositoryImpl implements ReportRepository {
     required String templateId,
     required Map<String, dynamic> submissionData,
     Map<String, dynamic>? location,
+    List<String>? mediaIds,
   }) async {
     final isOnline = await networkInfo.isOnline();
     if (!isOnline) {
@@ -217,6 +218,7 @@ class ReportRepositoryImpl implements ReportRepository {
         'submissionData': submissionData,
         'reportDate': today,
         if (location != null) 'location': location,
+        if (mediaIds != null && mediaIds.isNotEmpty) 'mediaIds': mediaIds,
       };
 
       final response = await remoteDataSource.createReport(payload);

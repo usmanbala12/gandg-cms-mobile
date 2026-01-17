@@ -3,11 +3,11 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 
-import '../../../../core/domain/repository_result.dart';
-import '../../domain/repositories/report_repository.dart';
-import '../../domain/entities/report_entity.dart';
-
-import '../../domain/entities/form_template_entity.dart';
+import 'package:field_link/core/domain/repository_result.dart';
+import 'package:field_link/features/reports/domain/repositories/report_repository.dart';
+import 'package:field_link/features/reports/domain/entities/report_entity.dart';
+import 'package:field_link/features/reports/domain/entities/form_template_entity.dart';
+import 'package:field_link/features/media/presentation/widgets/media_gallery.dart';
 
 class ReportDetailPage extends StatefulWidget {
   final String projectId;
@@ -92,6 +92,15 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
               ),
               const SizedBox(height: 12),
               _buildSubmissionDataCard(report, template),
+              if (report.mediaIds != null && report.mediaIds!.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                const Text(
+                  'Attachments',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                MediaGallery(mediaIds: report.mediaIds!),
+              ],
             ],
           );
         },
@@ -204,6 +213,28 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
     // The data is actually in submissionData['fields'] based on user sample
     final fieldsData = submissionData['fields'] as Map<String, dynamic>? ?? {};
 
+    if (template == null || template.fields.isEmpty) {
+       return Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.grey.shade200),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: fieldsData.entries.map((e) {
+              return ListTile(
+                title: Text(e.key),
+                subtitle: Text(e.value.toString()),
+              );
+            }).toList(),
+          ),
+        ),
+      );
+    }
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -215,7 +246,7 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children:
-              template?.fields.map((field) {
+              template.fields.map((field) {
                 final fieldResponse = fieldsData[field.id];
                 final value = fieldResponse is Map ? fieldResponse['value'] : fieldResponse;
 
@@ -237,12 +268,6 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
                     ],
                   ),
                 );
-              }).toList() ??
-              fieldsData.entries.map((e) {
-                return ListTile(
-                  title: Text(e.key),
-                  subtitle: Text(e.value.toString()),
-                );
               }).toList(),
         ),
       ),
@@ -257,8 +282,10 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
     switch (field.fieldType.toUpperCase()) {
       case 'MULTISELECT':
         if (value is List) {
+          if (value.isEmpty) return const Text('None selected', style: TextStyle(color: Colors.grey));
           return Wrap(
             spacing: 8,
+            runSpacing: 4,
             children:
                 value
                     .map(
@@ -266,6 +293,8 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
                         label: Text(v.toString(), style: const TextStyle(fontSize: 12)),
                         visualDensity: VisualDensity.compact,
                         backgroundColor: Colors.blue.shade50,
+                        padding: EdgeInsets.zero,
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                     )
                     .toList(),
@@ -275,11 +304,31 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
 
       case 'LOCATION':
         if (value is Map) {
-          return Row(
+          final address = value['address']?.toString();
+          final lat = value['latitude']?.toString();
+          final lng = value['longitude']?.toString();
+          
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.location_on, size: 16, color: Colors.blue),
-              const SizedBox(width: 4),
-              Expanded(child: Text(value['address'] ?? 'Coordinate only')),
+              if (address != null && address.isNotEmpty)
+                Row(
+                  children: [
+                    const Icon(Icons.location_on, size: 16, color: Colors.blue),
+                    const SizedBox(width: 4),
+                    Expanded(child: Text(address)),
+                  ],
+                ),
+              if (lat != null && lng != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Coords: $lat, $lng',
+                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  ),
+                ),
+              if ((address == null || address.isEmpty) && (lat == null || lng == null))
+                const Text('No location details', style: TextStyle(color: Colors.grey)),
             ],
           );
         }
@@ -297,10 +346,16 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
       case 'DATE':
         return Text(value.toString());
 
+      case 'NUMBER':
+        return Text(
+          value.toString(),
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+        );
+
       default:
         return Text(
           value.toString(),
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+          style: const TextStyle(fontSize: 15),
         );
     }
   }

@@ -15,11 +15,9 @@ import '../../../../core/network/network_info.dart';
 import '../../../../core/sync/sync_manager.dart';
 import '../../domain/entities/storage_stats_entity.dart';
 import '../../domain/entities/sync_status_entity.dart';
-import '../../domain/entities/user_preferences_entity.dart';
 import '../../domain/entities/user_profile_entity.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../datasources/profile_remote_datasource.dart';
-import '../models/user_preferences_model.dart';
 import '../models/user_profile_model.dart';
 
 /// Simplified ProfileRepository - removed unused DAO dependencies
@@ -34,7 +32,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
   final AppDatabase db;
   final Logger logger;
 
-  static const String _preferencesKey = 'notification_preferences';
+
   static const String _lastSyncKey = 'last_full_sync';
 
   ProfileRepositoryImpl({
@@ -99,62 +97,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     });
   }
 
-  @override
-  Future<UserPreferencesEntity> getPreferences() async {
-    final cachedJson = sharedPreferences.getString(_preferencesKey);
-    if (cachedJson != null) {
-      try {
-        final map = jsonDecode(cachedJson) as Map<String, dynamic>;
-        return UserPreferencesModel.fromJson(map);
-      } catch (e) {
-        logger.e('Error parsing cached preferences: $e');
-        return const UserPreferencesEntity();
-      }
-    }
-    return const UserPreferencesEntity();
-  }
 
-  @override
-  Future<void> updatePreferences(UserPreferencesEntity preferences) async {
-    final model = UserPreferencesModel.fromEntity(preferences);
-
-    // Save locally
-    await sharedPreferences.setString(
-      _preferencesKey,
-      jsonEncode(model.toJson()),
-    );
-    logger.i('Updated notification preferences locally');
-
-    // Try to sync to server if online
-    final isOnline = await networkInfo.isOnline();
-    if (isOnline) {
-      try {
-        await remoteDataSource.updateNotificationPreferences(model);
-        logger.i('Successfully synced preferences to server');
-      } catch (e) {
-        logger.w('Failed to sync preferences to server: $e');
-        await _enqueuePreferencesUpdate(model);
-      }
-    } else {
-      await _enqueuePreferencesUpdate(model);
-    }
-  }
-
-  Future<void> _enqueuePreferencesUpdate(UserPreferencesModel model) async {
-    await syncQueueDao.enqueue(
-      SyncQueueCompanion.insert(
-        id: const Uuid().v4(),
-        projectId: '',
-        entityType: 'user_preferences',
-        entityId: 'current_user',
-        action: 'update',
-        payload: Value(jsonEncode(model.toJson())),
-        status: const Value('PENDING'),
-        createdAt: DateTime.now().millisecondsSinceEpoch,
-      ),
-    );
-    logger.i('Enqueued preferences update for later sync');
-  }
 
   @override
   Stream<SyncStatusEntity> watchSyncStatus() async* {

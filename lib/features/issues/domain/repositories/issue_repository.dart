@@ -33,6 +33,7 @@ abstract class IssueRepository {
   /// Create a new issue.
   /// Inserts to local DB and enqueues sync item.
   /// Returns the local ID.
+  /// If [mediaIds] is provided, the media will be associated with the issue.
   Future<String> createIssue({
     required String projectId,
     required String title,
@@ -41,8 +42,9 @@ abstract class IssueRepository {
     String? assigneeId,
     String? category,
     String? location,
-    int? dueDate,
+    String? dueDate,
     String? meta,
+    List<String>? mediaIds,
   });
 
   /// Update an existing issue.
@@ -55,7 +57,7 @@ abstract class IssueRepository {
     String? assigneeId,
     String? category,
     String? location,
-    int? dueDate,
+    String? dueDate,
     String? meta,
   });
 
@@ -71,7 +73,7 @@ abstract class IssueRepository {
 
   /// Add a comment to an issue.
   /// Inserts comment row and enqueues sync item.
-  Future<void> addComment(String localIssueId, String text, String authorId);
+  Future<void> addComment(String localIssueId, String text, String authorId, {String? type});
 
   /// Get comments for an issue.
   Future<List<IssueCommentEntity>> getComments(String issueLocalId);

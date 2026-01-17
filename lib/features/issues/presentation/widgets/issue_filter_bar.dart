@@ -3,15 +3,19 @@ import 'package:flutter/material.dart';
 class IssueFilterBar extends StatelessWidget {
   final String selectedStatus;
   final String selectedPriority;
+  final String selectedCategory;
   final ValueChanged<String> onStatusChanged;
   final ValueChanged<String> onPriorityChanged;
+  final ValueChanged<String> onCategoryChanged;
 
   const IssueFilterBar({
     super.key,
     required this.selectedStatus,
     required this.selectedPriority,
+    required this.selectedCategory,
     required this.onStatusChanged,
     required this.onPriorityChanged,
+    required this.onCategoryChanged,
   });
 
   @override
@@ -25,7 +29,15 @@ class IssueFilterBar extends StatelessWidget {
             context,
             label: 'Status',
             value: selectedStatus,
-            options: ['All', 'Open', 'In Progress', 'Resolved', 'Closed'],
+            options: [
+              'All',
+              'Open',
+              'In Progress',
+              'On Hold',
+              'Resolved',
+              'Closed',
+              'Reopened',
+            ],
             onChanged: onStatusChanged,
           ),
           const SizedBox(width: 8),
@@ -33,8 +45,23 @@ class IssueFilterBar extends StatelessWidget {
             context,
             label: 'Priority',
             value: selectedPriority,
-            options: ['All', 'Low', 'Medium', 'High', 'Critical'],
+            options: ['All', 'Low', 'Medium', 'High', 'Urgent', 'Critical'],
             onChanged: onPriorityChanged,
+          ),
+          const SizedBox(width: 8),
+          _buildFilterChip(
+            context,
+            label: 'Category',
+            value: selectedCategory,
+            options: [
+              'All',
+              'Maintenance',
+              'Security',
+              'Cleaning',
+              'IT',
+              'Other',
+            ],
+            onChanged: onCategoryChanged,
           ),
         ],
       ),
@@ -48,7 +75,6 @@ class IssueFilterBar extends StatelessWidget {
     required List<String> options,
     required ValueChanged<String> onChanged,
   }) {
-    final theme = Theme.of(context);
     final isSelected = value != 'All';
 
     return InputChip(

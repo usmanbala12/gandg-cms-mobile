@@ -1,3 +1,4 @@
+import 'package:field_link/core/utils/theme/design_system.dart';
 import 'package:field_link/core/utils/theme/custom_themes/appbar_theme.dart';
 import 'package:field_link/core/utils/theme/custom_themes/bottom_sheet_theme.dart';
 import 'package:field_link/core/utils/theme/custom_themes/checkbox_theme.dart';
@@ -11,14 +12,13 @@ import 'package:flutter/material.dart';
 class TAppTheme {
   TAppTheme._();
 
-  // Minimal light theme: white background, black text, no gradients
   static ThemeData lightTheme = ThemeData(
     useMaterial3: true,
-    fontFamily: 'Roboto',
+    fontFamily: 'Inter',
     brightness: Brightness.light,
-    primaryColor: Colors.black,
-    scaffoldBackgroundColor: Colors.white,
-    dividerColor: const Color(0xFFE0E0E0),
+    primaryColor: DesignSystem.primary,
+    scaffoldBackgroundColor: DesignSystem.backgroundLight,
+    dividerColor: const Color(0xFFE5E5EA), // Light gray divider
     textTheme: TTextTheme.lightTextThem,
     elevatedButtonTheme: TElevatedButtonTheme.lightElevatedButtonStyle,
     appBarTheme: TAppBarTheme.lightAppBarTheme,
@@ -28,25 +28,25 @@ class TAppTheme {
     outlinedButtonTheme: TOutlinedButtonTheme.lightOutlinedButtonTheme,
     inputDecorationTheme: TTextFormFieldTheme.lightTextFieldTheme,
     colorScheme: const ColorScheme.light(
-      primary: Colors.black,
-      onPrimary: Colors.white,
-      secondary: Colors.black87,
-      onSecondary: Colors.white,
-      surface: Colors.white,
-      onSurface: Colors.black,
-      error: Colors.red,
+      primary: DesignSystem.primary,
+      onPrimary: DesignSystem.onPrimary,
+      secondary: DesignSystem.secondary,
+      onSecondary: DesignSystem.onSecondary,
+      surface: DesignSystem.surfaceLight,
+      onSurface: DesignSystem.textPrimaryLight,
+      error: DesignSystem.error,
       onError: Colors.white,
+      outline: DesignSystem.textSecondaryLight,
     ),
   );
 
-  // Minimal dark theme: black background, white text, no gradients
   static ThemeData darkTheme = ThemeData(
     useMaterial3: true,
-    fontFamily: 'Roboto',
+    fontFamily: 'Inter', // Applied globally
     brightness: Brightness.dark,
-    primaryColor: Colors.white,
-    scaffoldBackgroundColor: Colors.black,
-    dividerColor: const Color(0xFF303030),
+    primaryColor: DesignSystem.primary,
+    scaffoldBackgroundColor: DesignSystem.backgroundDark,
+    dividerColor: const Color(0xFF38383A), // Dark divider
     textTheme: TTextTheme.darkTextTheme,
     elevatedButtonTheme: TElevatedButtonTheme.darkElevatedButtonStyle,
     appBarTheme: TAppBarTheme.darkAppBarTheme,
@@ -56,14 +56,15 @@ class TAppTheme {
     outlinedButtonTheme: TOutlinedButtonTheme.darkOutlinedButtonTheme,
     inputDecorationTheme: TTextFormFieldTheme.darkTextFieldTheme,
     colorScheme: const ColorScheme.dark(
-      primary: Colors.white,
-      onPrimary: Colors.black,
-      secondary: Colors.white70,
-      onSecondary: Colors.black,
-      surface: Colors.black,
-      onSurface: Colors.white,
-      error: Colors.red,
+      primary: DesignSystem.primary,
+      onPrimary: DesignSystem.onPrimary,
+      secondary: DesignSystem.secondary,
+      onSecondary: DesignSystem.onSecondary,
+      surface: DesignSystem.surfaceDark,
+      onSurface: DesignSystem.textPrimaryDark,
+      error: DesignSystem.error,
       onError: Colors.black,
+      outline: DesignSystem.textSecondaryDark,
     ),
   );
 }

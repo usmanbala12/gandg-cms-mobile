@@ -1,8 +1,10 @@
+import 'dart:io';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../../../core/services/location_service.dart';
-import '../../domain/entities/form_template_entity.dart';
-import '../../domain/repositories/report_repository.dart';
+import 'package:field_link/core/services/location_service.dart';
+import 'package:field_link/features/reports/domain/entities/form_template_entity.dart';
+import 'package:field_link/features/reports/domain/repositories/report_repository.dart';
+import 'package:field_link/features/media/domain/repositories/media_repository.dart';
 
 // State
 abstract class ReportFormState extends Equatable {
@@ -61,12 +63,15 @@ class ReportFormError extends ReportFormState {
 // Cubit
 class ReportFormCubit extends Cubit<ReportFormState> {
   final ReportRepository _repository;
+  final MediaRepository _mediaRepository;
   final LocationService _locationService;
 
   ReportFormCubit({
     required ReportRepository repository,
+    required MediaRepository mediaRepository,
     required LocationService locationService,
   }) : _repository = repository,
+       _mediaRepository = mediaRepository,
        _locationService = locationService,
        super(ReportFormInitial());
 
@@ -97,15 +102,67 @@ class ReportFormCubit extends Cubit<ReportFormState> {
   }) async {
     emit(ReportFormSubmitting());
     try {
-      // Capture current location
+      // 1. Extract media file paths from MEDIA fields and upload them
+      final List<String> uploadedMediaIds = [];
+      final processedData = Map<String, dynamic>.from(data);
+      final fields = processedData['fields'] as Map<String, dynamic>? ?? {};
+      
+      for (final entry in fields.entries) {
+        final fieldId = entry.key;
+        final fieldData = entry.value as Map<String, dynamic>?;
+        if (fieldData != null) {
+          final fieldType = fieldData['fieldType']?.toString().toUpperCase();
+          // Handle MEDIA_UPLOAD field type
+          if (fieldType == 'MEDIA_UPLOAD') {
+            final rawValue = fieldData['value'];
+            List<dynamic> mediaPaths = [];
+            if (rawValue is List) {
+              mediaPaths = rawValue;
+            } else if (rawValue is String && rawValue.isNotEmpty) {
+              mediaPaths = [rawValue];
+            }
+            
+            final List<String> fieldMediaIds = [];
+            
+            for (final path in mediaPaths) {
+              if (path is String && path.isNotEmpty) {
+                // Upload to PROJECT first with fieldId as metadata
+                final media = await _mediaRepository.uploadMedia(
+                  file: File(path),
+                  parentType: 'PROJECT',
+                  parentId: projectId,
+                  metadata: {'fieldId': fieldId},
+                );
+                fieldMediaIds.add(media.id);
+                uploadedMediaIds.add(media.id);
+              }
+            }
+            
+            // Replace file paths with media ID(s) in form data
+            // Single file: store as string, multiple: store as list, empty: null
+            if (fieldMediaIds.isEmpty) {
+              fieldData['value'] = null;
+            } else if (fieldMediaIds.length == 1) {
+              fieldData['value'] = fieldMediaIds.first;
+            } else {
+              fieldData['value'] = fieldMediaIds;
+            }
+          }
+        }
+      }
+
+      // 2. Capture current location
       final location = await _locationService.getCurrentLocation();
 
+      // 3. Create report with inline mediaIds (replaces deprecated associateMedia)
       final reportId = await _repository.createReportWithData(
         projectId: projectId,
         templateId: templateId,
-        submissionData: data,
+        submissionData: processedData,
         location: location,
+        mediaIds: uploadedMediaIds.isNotEmpty ? uploadedMediaIds : null,
       );
+
       emit(ReportFormSuccess(reportId));
     } catch (e) {
       emit(ReportFormError(e.toString()));

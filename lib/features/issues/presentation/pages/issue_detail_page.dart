@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:intl/intl.dart';
 
-import '../../domain/entities/issue_comment_entity.dart';
-import '../../domain/entities/issue_entity.dart';
-import '../../domain/repositories/issue_repository.dart';
-import '../widgets/issue_comment_tile.dart';
+import 'package:field_link/features/issues/domain/entities/issue_comment_entity.dart';
+import 'package:field_link/features/issues/domain/entities/issue_entity.dart';
+import 'package:field_link/features/issues/domain/repositories/issue_repository.dart';
+import 'package:field_link/features/issues/presentation/widgets/issue_comment_tile.dart';
+import 'package:field_link/features/media/presentation/widgets/media_gallery.dart';
+import 'package:field_link/features/media/presentation/widgets/media_picker.dart';
+import 'package:field_link/features/media/presentation/cubit/media_uploader_cubit.dart';
+import 'package:field_link/features/media/domain/repositories/media_repository.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class IssueDetailPage extends StatefulWidget {
   final String issueId;
@@ -60,16 +64,10 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     setState(() => _isSendingComment = true);
 
     try {
-      await _repository.addComment(widget.issueId, text, _currentUserId);
+      await _repository.addComment(widget.issueId, text, _currentUserId, type: 'COMMENT');
       _commentController.clear();
-      // Scroll to bottom
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          0, // Reverse list
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
+      // Refetch comments manually since we are in remote-only mode
+      setState(() {}); 
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -86,82 +84,143 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Issue Details'),
           bottom: const TabBar(
             tabs: [
               Tab(text: 'Details'),
-              Tab(text: 'History'),
-              Tab(text: 'Media'),
+              Tab(text: 'Collaboration'),
             ],
           ),
         ),
-        body: StreamBuilder<IssueEntity?>(
-          stream: _repository.watchIssue(widget.issueId),
-          builder: (context, snapshot) {
-            if (snapshot.hasError) {
-              return Center(child: Text('Error: ${snapshot.error}'));
-            }
-            if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
+        body: BlocProvider(
+          create: (context) => MediaUploaderCubit(
+            repository: GetIt.I<MediaRepository>(),
+          ),
+          child: FutureBuilder<IssueEntity?>(
+            future: _repository.getIssue(widget.issueId),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
+              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
 
-            final issue = snapshot.data;
-            if (issue == null) {
-              return const Center(child: Text('Issue not found'));
-            }
+              final issue = snapshot.data;
+              if (issue == null) {
+                return const Center(child: Text('Issue not found'));
+              }
 
-            return TabBarView(
-              children: [
-                _buildDetailsTab(context, issue),
-                _buildHistoryTab(context, issue),
-                _buildMediaTab(context, issue),
-              ],
-            );
-          },
+              return TabBarView(
+                children: [
+                   _buildDetailsTab(context, issue),
+                  _buildCollaborationTab(context, issue),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
   }
 
   Widget _buildDetailsTab(BuildContext context, IssueEntity issue) {
+    return SingleChildScrollView(
+      controller: _scrollController,
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildIssueHeader(context, issue),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Divider(height: 32),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Media',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const MediaPicker(),
+                const SizedBox(height: 16),
+                BlocBuilder<MediaUploaderCubit, MediaUploaderState>(
+                  builder: (context, state) {
+                    final isUploading = state is MediaUploaderInProcess && state.isUploading;
+                    final hasSelected = state is MediaUploaderInProcess && state.selectedFiles.isNotEmpty;
+
+                    if (hasSelected && !isUploading) {
+                      return ElevatedButton.icon(
+                        onPressed: () => context.read<MediaUploaderCubit>().uploadFiles(
+                          parentType: 'ISSUE',
+                          parentId: issue.id,
+                        ),
+                        icon: const Icon(Icons.upload),
+                        label: const Text('Upload Selected'),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+                const SizedBox(height: 16),
+                if (issue.mediaIds != null && issue.mediaIds!.isNotEmpty)
+                  MediaGallery(mediaIds: issue.mediaIds!)
+                else
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 32.0),
+                      child: Text('No media attached to this issue'),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCollaborationTab(BuildContext context, IssueEntity issue) {
     return Column(
       children: [
         Expanded(
-          child: CustomScrollView(
-            controller: _scrollController,
-            reverse: true,
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 16),
-                  child: StreamBuilder<List<IssueCommentEntity>>(
-                    stream: _repository.watchComments(widget.issueId),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-                      final comments = snapshot.data!;
-                      return ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: comments.length,
-                        itemBuilder: (context, index) {
-                          final comment = comments[index];
-                          return IssueCommentTile(
-                            comment: comment,
-                            isCurrentUser: comment.authorId == _currentUserId,
-                          );
-                        },
-                      );
-                    },
+          child: FutureBuilder<List<IssueCommentEntity>>(
+            future: _repository.getComments(widget.issueId),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final comments = (snapshot.data ?? []).reversed.toList();
+              if (comments.isEmpty) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Text('No comments yet'),
                   ),
-                ),
-              ),
-              SliverToBoxAdapter(child: _buildIssueHeader(context, issue)),
-            ],
+                );
+              }
+              return ListView.builder(
+                padding: const EdgeInsets.only(top: 8),
+                itemCount: comments.length,
+                itemBuilder: (context, index) {
+                  final comment = comments[index];
+                  return IssueCommentTile(
+                    comment: comment,
+                    isCurrentUser: comment.authorId == _currentUserId,
+                  );
+                },
+              );
+            },
           ),
         ),
         _buildCommentInput(context),
@@ -169,69 +228,6 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     );
   }
 
-  Widget _buildHistoryTab(BuildContext context, IssueEntity issue) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _repository.loadHistory(issue.id),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(
-            child: Text('Error loading history: ${snapshot.error}'),
-          );
-        }
-        final history = snapshot.data ?? [];
-        if (history.isEmpty) {
-          return const Center(child: Text('No history found'));
-        }
-        return ListView.builder(
-          itemCount: history.length,
-          itemBuilder: (context, index) {
-            final item = history[index];
-            final date = DateTime.fromMillisecondsSinceEpoch(
-              (item['created_at'] as num).toInt(),
-            );
-            return ListTile(
-              leading: const Icon(Icons.history),
-              title: Text('${item['action']} ${item['field'] ?? ''}'),
-              subtitle: Text(
-                '${item['old_value'] ?? '-'} -> ${item['new_value'] ?? '-'}\n${DateFormat.yMMMd().add_jm().format(date)}',
-              ),
-              trailing: Text(item['author_id'] ?? 'Unknown'),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildMediaTab(BuildContext context, IssueEntity issue) {
-    // Placeholder for media tab
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.image, size: 64, color: Colors.grey),
-          const SizedBox(height: 16),
-          const Text('No media attached'),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            onPressed: () {
-              // TODO: Implement media upload
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Media upload not implemented yet'),
-                ),
-              );
-            },
-            icon: const Icon(Icons.add_a_photo),
-            label: const Text('Add Photo'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildIssueHeader(BuildContext context, IssueEntity issue) {
     final theme = Theme.of(context);
@@ -253,6 +249,14 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
                 _buildStatusDropdown(context, issue),
               ],
             ),
+            const SizedBox(height: 4),
+            if (issue.author != null)
+              Text(
+                'By: ${issue.author?['firstName']} ${issue.author?['lastName'] ?? ''}',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.outline,
+                ),
+              ),
             const SizedBox(height: 8),
             if (issue.description != null) ...[
               Text(issue.description!, style: theme.textTheme.bodyMedium),
@@ -271,18 +275,12 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  issue.dueDate != null
-                      ? DateFormat.yMMMd().format(
-                          DateTime.fromMillisecondsSinceEpoch(issue.dueDate!),
-                        )
-                      : 'No due date',
+                  issue.dueDate ?? 'No due date',
                 ),
               ],
             ),
             const SizedBox(height: 16),
             _buildAssigneeRow(context, issue),
-            const Divider(height: 32),
-            Text('Comments', style: theme.textTheme.titleMedium),
           ],
         ),
       ),
@@ -294,7 +292,9 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
       children: [
         const Icon(Icons.person, size: 16, color: Colors.grey),
         const SizedBox(width: 4),
-        Text('Assignee: ${issue.assigneeId ?? 'Unassigned'}'),
+        Text(
+          'Assignee: ${issue.assignee != null ? "${issue.assignee!['firstName']} ${issue.assignee!['lastName'] ?? ''}" : (issue.assigneeId ?? 'Unassigned')}',
+        ),
         const Spacer(),
         TextButton(
           onPressed: () {
@@ -386,7 +386,7 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
         color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withAlpha((0.05 * 255).toInt()),
             blurRadius: 5,
             offset: const Offset(0, -2),
           ),

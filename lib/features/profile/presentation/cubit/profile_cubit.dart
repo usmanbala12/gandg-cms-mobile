@@ -7,7 +7,6 @@ import 'package:logger/logger.dart';
 import '../../../../features/authentication/domain/repositories/auth_repository.dart';
 import '../../domain/entities/storage_stats_entity.dart';
 import '../../domain/entities/sync_status_entity.dart';
-import '../../domain/entities/user_preferences_entity.dart';
 import '../../domain/entities/user_profile_entity.dart';
 import '../../domain/repositories/profile_repository.dart';
 
@@ -39,9 +38,6 @@ class ProfileCubit extends Cubit<ProfileState> {
       final userResult = await profileRepository.getUserProfile();
       final user = userResult.data;
 
-      // Load preferences
-      final preferences = await profileRepository.getPreferences();
-
       // Load storage stats
       final storageStats = await profileRepository.getStorageStats();
 
@@ -53,7 +49,6 @@ class ProfileCubit extends Cubit<ProfileState> {
       // Emit loaded state
       emit(ProfileLoaded(
         user: user,
-        preferences: preferences,
         syncStatus: syncStatus,
         storageStats: storageStats,
         message: userResult.message,
@@ -107,29 +102,7 @@ class ProfileCubit extends Cubit<ProfileState> {
     }
   }
 
-  /// Update notification preferences.
-  Future<void> updatePreferences(UserPreferencesEntity preferences) async {
-    if (state is! ProfileLoaded) return;
 
-    final currentState = state as ProfileLoaded;
-
-    try {
-      logger.i('Updating notification preferences');
-      await profileRepository.updatePreferences(preferences);
-
-      emit(currentState.copyWith(
-        preferences: preferences,
-        message: 'Preferences updated successfully',
-      ));
-
-      logger.i('Notification preferences updated');
-    } catch (e) {
-      logger.e('Error updating preferences: $e');
-      emit(currentState.copyWith(
-        message: 'Failed to update preferences: $e',
-      ));
-    }
-  }
 
   /// Trigger manual sync.
   Future<void> syncNow() async {

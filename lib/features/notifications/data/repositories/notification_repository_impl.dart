@@ -8,7 +8,7 @@ import '../../domain/repositories/notification_repository.dart';
 import '../datasources/notification_remote_datasource.dart';
 import '../models/notification_model.dart';
 
-/// Simplified NotificationRepository - remote only, no local caching.
+/// NotificationRepository implementation - remote only, no local caching.
 class NotificationRepositoryImpl implements NotificationRepository {
   final NotificationRemoteDataSource remoteDataSource;
   final NetworkInfo networkInfo;
@@ -21,17 +21,12 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }) : logger = logger ?? Logger();
 
   @override
-  Stream<List<NotificationEntity>> watchNotifications(String userId) {
-    // Remote-only: no local stream
-    logger.w('watchNotifications is deprecated in remote-only mode');
-    return Stream.value([]);
-  }
-
-  @override
-  Future<RepositoryResult<List<NotificationEntity>>> getNotifications(
-    String userId, {
-    int limit = 50,
-    int offset = 0,
+  Future<RepositoryResult<List<NotificationEntity>>> getNotifications({
+    int page = 0,
+    int size = 20,
+    bool unreadOnly = false,
+    String sortBy = 'createdAt',
+    String sortDir = 'desc',
   }) async {
     final isOnline = await networkInfo.isOnline();
 
@@ -44,9 +39,11 @@ class NotificationRepositoryImpl implements NotificationRepository {
 
     try {
       final remoteData = await remoteDataSource.fetchNotifications(
-        userId,
-        limit: limit,
-        offset: offset,
+        page: page,
+        size: size,
+        unreadOnly: unreadOnly,
+        sortBy: sortBy,
+        sortDir: sortDir,
       );
 
       final notifications = remoteData
@@ -70,6 +67,29 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }
 
   @override
+  Future<RepositoryResult<int>> getUnreadCount() async {
+    final isOnline = await networkInfo.isOnline();
+
+    if (!isOnline) {
+      return RepositoryResult.local(
+        0,
+        message: 'You are offline.',
+      );
+    }
+
+    try {
+      final count = await remoteDataSource.fetchUnreadCount();
+      return RepositoryResult.remote(count);
+    } on DioException catch (e) {
+      logger.e('Dio error fetching unread count: $e');
+      return RepositoryResult.local(0, message: 'Network error.');
+    } catch (e) {
+      logger.e('Error fetching unread count: $e');
+      return RepositoryResult.local(0, message: 'Error loading count.');
+    }
+  }
+
+  @override
   Future<void> markAsRead(String id) async {
     final isOnline = await networkInfo.isOnline();
     if (!isOnline) {
@@ -85,14 +105,14 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }
 
   @override
-  Future<void> markAllAsRead(String userId) async {
+  Future<void> markAllAsRead() async {
     final isOnline = await networkInfo.isOnline();
     if (!isOnline) {
       throw Exception('Cannot mark notifications as read while offline.');
     }
 
     try {
-      await remoteDataSource.markAllAsRead(userId);
+      await remoteDataSource.markAllAsRead();
     } catch (e) {
       logger.e('Error marking all notifications as read: $e');
       rethrow;
@@ -100,9 +120,17 @@ class NotificationRepositoryImpl implements NotificationRepository {
   }
 
   @override
-  Future<void> addNotification(NotificationEntity notification) async {
-    // In remote-only mode, this is a no-op for push notifications
-    // as they come from the server
-    logger.d('addNotification called but notifications are remote-only');
+  Future<void> deleteNotification(String id) async {
+    final isOnline = await networkInfo.isOnline();
+    if (!isOnline) {
+      throw Exception('Cannot delete notification while offline.');
+    }
+
+    try {
+      await remoteDataSource.deleteNotification(id);
+    } catch (e) {
+      logger.e('Error deleting notification: $e');
+      rethrow;
+    }
   }
 }

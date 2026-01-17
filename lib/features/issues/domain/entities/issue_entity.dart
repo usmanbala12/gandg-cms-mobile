@@ -9,12 +9,17 @@ class IssueEntity {
   final String? status; // OPEN/IN_PROGRESS/RESOLVED/CLOSED
   final String? category;
   final String? location; // JSON string
-  final int? dueDate;
+  final String? dueDate;
   final int createdAt;
   final int updatedAt;
   final String? serverId;
   final int? serverUpdatedAt;
   final String? meta; // Additional JSON metadata
+  final String? issueNumber;
+  final Map<String, dynamic>? author;
+  final Map<String, dynamic>? assignee;
+  final List<Map<String, dynamic>>? media;
+  final List<String>? mediaIds;
 
   const IssueEntity({
     required this.id,
@@ -32,6 +37,11 @@ class IssueEntity {
     this.serverId,
     this.serverUpdatedAt,
     this.meta,
+    this.issueNumber,
+    this.author,
+    this.assignee,
+    this.media,
+    this.mediaIds,
   });
 
   /// Check if issue is pending sync.
@@ -55,12 +65,17 @@ class IssueEntity {
     String? status,
     String? category,
     String? location,
-    int? dueDate,
+    String? dueDate,
     int? createdAt,
     int? updatedAt,
     String? serverId,
     int? serverUpdatedAt,
     String? meta,
+    String? issueNumber,
+    Map<String, dynamic>? author,
+    Map<String, dynamic>? assignee,
+    List<Map<String, dynamic>>? media,
+    List<String>? mediaIds,
   }) {
     return IssueEntity(
       id: id ?? this.id,
@@ -78,6 +93,11 @@ class IssueEntity {
       serverId: serverId ?? this.serverId,
       serverUpdatedAt: serverUpdatedAt ?? this.serverUpdatedAt,
       meta: meta ?? this.meta,
+      issueNumber: issueNumber ?? this.issueNumber,
+      author: author ?? this.author,
+      assignee: assignee ?? this.assignee,
+      media: media ?? this.media,
+      mediaIds: mediaIds ?? this.mediaIds,
     );
   }
 }

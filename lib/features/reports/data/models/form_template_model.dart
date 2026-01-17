@@ -12,10 +12,10 @@ class FormTemplateModel extends FormTemplateEntity {
 
   factory FormTemplateModel.fromJson(Map<String, dynamic> json) {
     return FormTemplateModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      description: json['description'] as String? ?? '',
-      category: json['category'] as String? ?? 'GENERAL',
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Untitled Template',
+      description: json['description']?.toString() ?? '',
+      category: json['category']?.toString() ?? 'GENERAL',
       isActive: json['isActive'] as bool? ?? true,
       fields: (json['fields'] as List<dynamic>?)
               ?.map((e) => FormFieldModel.fromJson(e as Map<String, dynamic>))
@@ -37,12 +37,12 @@ class FormFieldModel extends FormFieldEntity {
 
   factory FormFieldModel.fromJson(Map<String, dynamic> json) {
     return FormFieldModel(
-      id: json['id'] as String,
-      label: json['label'] as String,
-      fieldType: json['fieldType'] as String,
+      id: json['id']?.toString() ?? '',
+      label: json['label']?.toString() ?? 'Untitled Field',
+      fieldType: json['fieldType']?.toString() ?? 'TEXT',
       isRequired: json['isRequired'] as bool? ?? false,
       options: (json['options'] as List<dynamic>?)
-              ?.map((e) => e as String)
+              ?.map((e) => e?.toString() ?? '')
               .toList() ??
           [],
       displayOrder: json['displayOrder'] as int? ?? 0,

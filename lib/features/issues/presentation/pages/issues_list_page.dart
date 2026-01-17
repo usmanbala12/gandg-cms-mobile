@@ -23,6 +23,7 @@ class _IssuesListPageState extends State<IssuesListPage> {
   String? _projectId;
   String _statusFilter = 'All';
   String _priorityFilter = 'All';
+  String _categoryFilter = 'All';
   String _searchQuery = '';
   final _searchController = TextEditingController();
   bool _isSearching = false;
@@ -60,6 +61,7 @@ class _IssuesListPageState extends State<IssuesListPage> {
         filters: {
           'status': _statusFilter,
           'priority': _priorityFilter,
+          'category': _categoryFilter,
           'search': _searchQuery,
         },
       ),
@@ -113,12 +115,17 @@ class _IssuesListPageState extends State<IssuesListPage> {
             IssueFilterBar(
               selectedStatus: _statusFilter,
               selectedPriority: _priorityFilter,
+              selectedCategory: _categoryFilter,
               onStatusChanged: (value) {
                 setState(() => _statusFilter = value);
                 _updateFilters();
               },
               onPriorityChanged: (value) {
                 setState(() => _priorityFilter = value);
+                _updateFilters();
+              },
+              onCategoryChanged: (value) {
+                setState(() => _categoryFilter = value);
                 _updateFilters();
               },
             ),

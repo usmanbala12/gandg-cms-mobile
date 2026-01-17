@@ -1,53 +1,47 @@
 import 'package:equatable/equatable.dart';
 
+/// Notification entity matching backend API response.
+/// See: GET /api/v1/notifications
 class NotificationEntity extends Equatable {
   final String id;
   final String userId;
-  final String? projectId;
   final String title;
-  final String body;
-  final String type; // INFO, WARNING, ERROR, SUCCESS
-  final bool isRead;
-  final int createdAt;
-  final String? serverId;
-  final Map<String, dynamic>? meta;
+  final String message;
+  final String? url; // Internal link for deep navigation, e.g., /projects/123
+  final bool read;
+  final DateTime? readAt;
+  final DateTime createdAt;
 
   const NotificationEntity({
     required this.id,
     required this.userId,
-    this.projectId,
     required this.title,
-    required this.body,
-    this.type = 'INFO',
-    this.isRead = false,
+    required this.message,
+    this.url,
+    required this.read,
+    this.readAt,
     required this.createdAt,
-    this.serverId,
-    this.meta,
   });
 
   NotificationEntity copyWith({
     String? id,
     String? userId,
-    String? projectId,
     String? title,
-    String? body,
-    String? type,
-    bool? isRead,
-    int? createdAt,
-    String? serverId,
-    Map<String, dynamic>? meta,
+    String? message,
+    String? url,
+    bool? read,
+    DateTime? readAt,
+    DateTime? createdAt,
   }) {
     return NotificationEntity(
       id: id ?? this.id,
       userId: userId ?? this.userId,
-      projectId: projectId ?? this.projectId,
       title: title ?? this.title,
-      body: body ?? this.body,
-      type: type ?? this.type,
-      isRead: isRead ?? this.isRead,
+      message: message ?? this.message,
+      url: url ?? this.url,
+      read: read ?? this.read,
+      readAt: readAt ?? this.readAt,
       createdAt: createdAt ?? this.createdAt,
-      serverId: serverId ?? this.serverId,
-      meta: meta ?? this.meta,
     );
   }
 
@@ -55,13 +49,11 @@ class NotificationEntity extends Equatable {
   List<Object?> get props => [
         id,
         userId,
-        projectId,
         title,
-        body,
-        type,
-        isRead,
+        message,
+        url,
+        read,
+        readAt,
         createdAt,
-        serverId,
-        meta,
       ];
 }

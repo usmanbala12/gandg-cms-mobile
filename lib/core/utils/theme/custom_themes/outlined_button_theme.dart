@@ -1,3 +1,4 @@
+import 'package:field_link/core/utils/theme/design_system.dart';
 import 'package:flutter/material.dart';
 
 class TOutlinedButtonTheme {
@@ -7,16 +8,16 @@ class TOutlinedButtonTheme {
       OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           elevation: 0,
-          foregroundColor: Colors.black,
-          side: const BorderSide(color: Colors.blue),
+          foregroundColor: DesignSystem.primary,
+          side: const BorderSide(color: DesignSystem.primary),
           textStyle: const TextStyle(
             fontSize: 16,
-            color: Colors.black,
+            color: DesignSystem.primary,
             fontWeight: FontWeight.w600,
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(DesignSystem.radiusM),
           ),
         ),
       );
@@ -26,7 +27,7 @@ class TOutlinedButtonTheme {
         style: OutlinedButton.styleFrom(
           elevation: 0,
           foregroundColor: Colors.white,
-          side: const BorderSide(color: Colors.blue),
+          side: const BorderSide(color: DesignSystem.primary),
           textStyle: const TextStyle(
             fontSize: 16,
             color: Colors.white,
@@ -34,7 +35,7 @@ class TOutlinedButtonTheme {
           ),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(DesignSystem.radiusM),
           ),
         ),
       );

@@ -29,10 +29,26 @@ class IssueCommentTile extends StatelessWidget {
           if (!isCurrentUser) ...[
             CircleAvatar(
               radius: 16,
-              backgroundColor: theme.colorScheme.primaryContainer,
-              child: Text(
-                comment.authorId.substring(0, 1).toUpperCase(),
-                style: TextStyle(color: theme.colorScheme.onPrimaryContainer),
+              backgroundColor: comment.type != 'COMMENT' && comment.type != null
+                  ? theme.colorScheme.secondaryContainer
+                  : theme.colorScheme.primaryContainer,
+              child: Builder(
+                builder: (context) {
+                  final displayName = comment.author?['fullName']?.toString() ??
+                      (comment.author?['firstName'] != null
+                          ? '${comment.author!['firstName']} ${comment.author!['lastName'] ?? ''}'
+                          : null) ??
+                      comment.authorId;
+                  final initial = displayName.isNotEmpty ? displayName.substring(0, 1).toUpperCase() : '?';
+                  return Text(
+                    initial,
+                    style: TextStyle(
+                      color: comment.type != 'COMMENT' && comment.type != null
+                          ? theme.colorScheme.onSecondaryContainer
+                          : theme.colorScheme.onPrimaryContainer,
+                    ),
+                  );
+                },
               ),
             ),
             const SizedBox(width: 8),
@@ -58,13 +74,33 @@ class IssueCommentTile extends StatelessWidget {
                           : const Radius.circular(12),
                     ),
                   ),
-                  child: Text(
-                    comment.body,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: isCurrentUser
-                          ? theme.colorScheme.onPrimaryContainer
-                          : theme.colorScheme.onSurfaceVariant,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (!isCurrentUser && comment.author != null)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text(
+                            comment.author?['fullName']?.toString() ??
+                                '${comment.author!['firstName']} ${comment.author!['lastName'] ?? ''}',
+                            style: theme.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        ),
+                      Text(
+                        comment.content,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: isCurrentUser
+                              ? theme.colorScheme.onPrimaryContainer
+                              : theme.colorScheme.onSurfaceVariant,
+                          fontStyle: comment.type != 'COMMENT' && comment.type != null
+                              ? FontStyle.italic
+                              : null,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -99,7 +135,9 @@ class IssueCommentTile extends StatelessWidget {
               radius: 16,
               backgroundColor: theme.colorScheme.primary,
               child: Text(
-                comment.authorId.substring(0, 1).toUpperCase(),
+                (comment.authorId.isNotEmpty ? comment.authorId : '?')
+                    .substring(0, 1)
+                    .toUpperCase(),
                 style: TextStyle(color: theme.colorScheme.onPrimary),
               ),
             ),

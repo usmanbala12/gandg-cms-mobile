@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../domain/entities/report_entity.dart';
-import '../cubit/reports_cubit.dart';
-import '../cubit/reports_state.dart';
-import 'report_create_page.dart';
-import 'report_detail_page.dart';
+import 'package:field_link/features/reports/domain/entities/report_entity.dart';
+import 'package:field_link/features/reports/presentation/cubit/reports_cubit.dart';
+import 'package:field_link/features/reports/presentation/cubit/reports_state.dart';
+import 'package:field_link/features/reports/presentation/pages/report_create_page.dart';
+import 'package:field_link/features/reports/presentation/pages/report_detail_page.dart';
 
 class ReportsListPage extends StatelessWidget {
   const ReportsListPage({super.key});

@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
-import 'media_picker_widget.dart';
-import '../../domain/entities/form_template_entity.dart';
+import 'package:field_link/features/reports/domain/entities/form_template_entity.dart';
+import 'package:field_link/features/reports/presentation/widgets/media_picker_widget.dart';
 
 /// Widget that dynamically builds a form based on a template
 class DynamicForm extends StatefulWidget {
@@ -127,8 +127,7 @@ class _DynamicFormState extends State<DynamicForm> {
       case 'LOCATION':
         return _buildLocationField(field);
 
-      case 'MEDIA':
-      case 'MEDIA_UPLOAD': // Match API Enum
+      case 'MEDIA_UPLOAD':
         return _buildMediaField(field);
 
       default:
@@ -597,7 +596,7 @@ class _DynamicFormState extends State<DynamicForm> {
                 if (widget.onCancel != null) const SizedBox(width: 16),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: _handleSubmit,
+                    onPressed: () => _handleOnSubmit(context),
                     child: const Text('Submit'),
                   ),
                 ),
@@ -607,5 +606,35 @@ class _DynamicFormState extends State<DynamicForm> {
         ],
       ),
     );
+  }
+
+  void _handleOnSubmit(BuildContext context) {
+    if (_formKey.currentState!.validate()) {
+      _formKey.currentState!.save();
+
+      // Build the properly structured submission data for the API
+      final Map<String, dynamic> fields = {};
+      for (final field in widget.template.fields) {
+        dynamic value = _formData[field.id];
+        
+        // Format date values as ISO string
+        if (value is DateTime) {
+          value = DateFormat('yyyy-MM-dd').format(value);
+        }
+        
+        fields[field.id] = {
+          'fieldId': field.id,
+          'fieldType': field.fieldType.toUpperCase(),
+          'value': value,
+        };
+      }
+
+      final submissionData = {
+        'formVersion': 1,
+        'fields': fields,
+      };
+
+      widget.onSubmit(submissionData);
+    }
   }
 }

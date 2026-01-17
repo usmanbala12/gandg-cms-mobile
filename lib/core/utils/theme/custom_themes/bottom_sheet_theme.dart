@@ -1,3 +1,4 @@
+import 'package:field_link/core/utils/theme/design_system.dart';
 import 'package:flutter/material.dart';
 
 class TBottomSheetTheme {
@@ -6,21 +7,21 @@ class TBottomSheetTheme {
   static const BottomSheetThemeData lightBottomSheetTheme =
       BottomSheetThemeData(
         showDragHandle: true,
-        backgroundColor: Colors.white,
-        modalBackgroundColor: Colors.white,
+        backgroundColor: DesignSystem.surfaceLight,
+        modalBackgroundColor: DesignSystem.surfaceLight,
         constraints: BoxConstraints(minWidth: double.infinity),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(DesignSystem.radiusXL)),
         ),
       );
 
   static const BottomSheetThemeData darkBottomSheetTheme = BottomSheetThemeData(
     showDragHandle: true,
-    backgroundColor: Colors.black,
-    modalBackgroundColor: Colors.black,
+    backgroundColor: DesignSystem.surfaceDark,
+    modalBackgroundColor: DesignSystem.surfaceDark,
     constraints: BoxConstraints(minWidth: double.infinity),
     shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.all(Radius.circular(16)),
+      borderRadius: BorderRadius.vertical(top: Radius.circular(DesignSystem.radiusXL)),
     ),
   );
 }
