@@ -6,6 +6,7 @@ class ApprovalStepEntity extends Equatable {
   final String approverId;
   final String? approverFirstName;
   final String? approverLastName;
+  final String? approverFullName;
   final String? approverEmail;
   final String status; // PENDING, APPROVED, REJECTED
   final double? maxApprovalAmount;
@@ -22,6 +23,7 @@ class ApprovalStepEntity extends Equatable {
     required this.approverId,
     this.approverFirstName,
     this.approverLastName,
+    this.approverFullName,
     this.approverEmail,
     required this.status,
     this.maxApprovalAmount,
@@ -33,11 +35,19 @@ class ApprovalStepEntity extends Equatable {
   });
 
   String get approverDisplayName {
-    if (approverFirstName != null && approverLastName != null) {
+    if (approverFullName != null && approverFullName!.trim().isNotEmpty) {
+      return approverFullName!;
+    }
+    
+    final hasFirst = approverFirstName != null && approverFirstName!.trim().isNotEmpty;
+    final hasLast = approverLastName != null && approverLastName!.trim().isNotEmpty;
+
+    if (hasFirst && hasLast) {
       return '$approverFirstName $approverLastName';
     }
-    if (approverFirstName != null) return approverFirstName!;
-    if (approverEmail != null) return approverEmail!;
+    if (hasFirst) return approverFirstName!;
+    if (hasLast) return approverLastName!;
+    if (approverEmail != null && approverEmail!.isNotEmpty) return approverEmail!;
     return approverId;
   }
 
@@ -57,6 +67,7 @@ class ApprovalStepEntity extends Equatable {
         approverId,
         approverFirstName,
         approverLastName,
+        approverFullName,
         approverEmail,
         status,
         maxApprovalAmount,

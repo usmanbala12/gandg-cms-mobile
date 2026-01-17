@@ -36,6 +36,7 @@ class RequestEntity extends Equatable {
   // Requester info (from API)
   final String? requesterFirstName;
   final String? requesterLastName;
+  final String? requesterFullName;
   final String? requesterEmail;
 
   // Line items
@@ -72,6 +73,7 @@ class RequestEntity extends Equatable {
     // Requester
     this.requesterFirstName,
     this.requesterLastName,
+    this.requesterFullName,
     this.requesterEmail,
     // Line items
     this.lineItems,
@@ -79,11 +81,19 @@ class RequestEntity extends Equatable {
 
   /// Display name for the requester
   String get requesterDisplayName {
-    if (requesterFirstName != null && requesterLastName != null) {
+    if (requesterFullName != null && requesterFullName!.trim().isNotEmpty) {
+      return requesterFullName!;
+    }
+    
+    final hasFirst = requesterFirstName != null && requesterFirstName!.trim().isNotEmpty;
+    final hasLast = requesterLastName != null && requesterLastName!.trim().isNotEmpty;
+
+    if (hasFirst && hasLast) {
       return '$requesterFirstName $requesterLastName';
     }
-    if (requesterFirstName != null) return requesterFirstName!;
-    if (requesterEmail != null) return requesterEmail!;
+    if (hasFirst) return requesterFirstName!;
+    if (hasLast) return requesterLastName!;
+    if (requesterEmail != null && requesterEmail!.isNotEmpty) return requesterEmail!;
     return createdBy;
   }
 
@@ -124,6 +134,7 @@ class RequestEntity extends Equatable {
     int? currentStepOrder,
     String? requesterFirstName,
     String? requesterLastName,
+    String? requesterFullName,
     String? requesterEmail,
     List<RequestLineItemEntity>? lineItems,
   }) {
@@ -155,6 +166,7 @@ class RequestEntity extends Equatable {
       currentStepOrder: currentStepOrder ?? this.currentStepOrder,
       requesterFirstName: requesterFirstName ?? this.requesterFirstName,
       requesterLastName: requesterLastName ?? this.requesterLastName,
+      requesterFullName: requesterFullName ?? this.requesterFullName,
       requesterEmail: requesterEmail ?? this.requesterEmail,
       lineItems: lineItems ?? this.lineItems,
     );
@@ -189,6 +201,7 @@ class RequestEntity extends Equatable {
         currentStepOrder,
         requesterFirstName,
         requesterLastName,
+        requesterFullName,
         requesterEmail,
         lineItems,
       ];

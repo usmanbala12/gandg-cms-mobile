@@ -23,6 +23,7 @@ class _RequestCreateView extends StatefulWidget {
 
 class _RequestCreateViewState extends State<_RequestCreateView> {
   final _formKey = GlobalKey<FormState>();
+  final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _amountController = TextEditingController();
   String _selectedType = 'FUNDS';
@@ -31,6 +32,7 @@ class _RequestCreateViewState extends State<_RequestCreateView> {
 
   @override
   void dispose() {
+    _titleController.dispose();
     _descriptionController.dispose();
     _amountController.dispose();
     super.dispose();
@@ -43,6 +45,7 @@ class _RequestCreateViewState extends State<_RequestCreateView> {
         context.read<RequestCreateCubit>().submit(
               projectId: dashboardState.selectedProjectId!,
               type: _selectedType,
+              title: _titleController.text,
               description: _descriptionController.text,
               priority: _selectedPriority,
               createdBy: 'current_user_id', // TODO: Get from AuthBloc
@@ -111,6 +114,20 @@ class _RequestCreateViewState extends State<_RequestCreateView> {
                   setState(() {
                     _selectedType = value!;
                   });
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Title',
+                  border: OutlineInputBorder(),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a title';
+                  }
+                  return null;
                 },
               ),
               const SizedBox(height: 16),

@@ -11,12 +11,10 @@ import 'package:path_provider/path_provider.dart';
 import 'tables/projects.dart';
 import 'tables/sync_queue.dart';
 import 'tables/meta.dart';
-import 'tables/requests.dart';
 import 'tables/users.dart';
 import 'daos/project_dao.dart';
 import 'daos/sync_queue_dao.dart';
 import 'daos/meta_dao.dart';
-import 'daos/request_dao.dart';
 import 'daos/user_dao.dart';
 
 part 'app_database.g.dart';
@@ -26,14 +24,12 @@ part 'app_database.g.dart';
     Projects,
     SyncQueue,
     Meta,
-    Requests,
     Users,
   ],
   daos: [
     ProjectDao,
     SyncQueueDao,
     MetaDao,
-    RequestDao,
     UserDao,
   ],
 )
@@ -45,7 +41,7 @@ class AppDatabase extends _$AppDatabase {
 
   // Increment this when making schema changes and add proper migrations.
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 12;
 
   // Track if indexes are being created to avoid duplicate work
   bool _indexCreationStarted = false;
@@ -107,22 +103,6 @@ class AppDatabase extends _$AppDatabase {
             }
           }
 
-          // Keep previous migrations for users upgrading from older versions
-          if (from < 5) {
-            await m.createTable(requests);
-          }
-          if (from < 6) {
-            try {
-              await m.addColumn(
-                  requests, requests.shortSummary as GeneratedColumn);
-            } catch (_) {}
-            try {
-              await m.addColumn(requests, requests.location as GeneratedColumn);
-            } catch (_) {}
-            try {
-              await m.addColumn(requests, requests.dueDate as GeneratedColumn);
-            } catch (_) {}
-          }
           if (from < 7) {
             await m.createTable(users);
           }
@@ -132,6 +112,11 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(users, users.admin);
             await m.addColumn(users, users.createdAt);
             await m.addColumn(users, users.updatedAt);
+          }
+          if (from < 12) {
+            try {
+              await m.database.customStatement('DROP TABLE IF EXISTS requests');
+            } catch (_) {}
           }
         },
         beforeOpen: (details) async {
@@ -182,10 +167,6 @@ class AppDatabase extends _$AppDatabase {
       // SyncQueue indexes for efficient queue processing
       'CREATE INDEX IF NOT EXISTS idx_syncqueue_status_priority_created ON sync_queue(status, priority DESC, created_at ASC);',
       'CREATE INDEX IF NOT EXISTS idx_syncqueue_project_status ON sync_queue(project_id, status);',
-      // Requests indexes
-      'CREATE INDEX IF NOT EXISTS idx_requests_project_id ON requests(project_id);',
-      'CREATE INDEX IF NOT EXISTS idx_requests_status ON requests(status);',
-      'CREATE INDEX IF NOT EXISTS idx_requests_server_id ON requests(server_id);',
       // Users index
       'CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);',
     ];

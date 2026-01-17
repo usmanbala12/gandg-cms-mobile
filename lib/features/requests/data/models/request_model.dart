@@ -1,8 +1,5 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart';
-
-import '../../../../core/db/app_database.dart';
 import '../../domain/entities/approval_step_entity.dart';
 import '../../domain/entities/request_entity.dart';
 import '../../domain/entities/request_line_item_entity.dart';
@@ -41,6 +38,7 @@ class RequestModel extends RequestEntity {
     // Requester
     super.requesterFirstName,
     super.requesterLastName,
+    super.requesterFullName,
     super.requesterEmail,
     // Line items
     super.lineItems,
@@ -55,8 +53,23 @@ class RequestModel extends RequestEntity {
   }
 
   factory RequestModel.fromJson(Map<String, dynamic> json) {
-    // Parse requester info
-    final requester = json['requester'] as Map<String, dynamic>?;
+    // Parse requester info - check both nested 'requester' object and root level
+    final requesterJson = (json['requester'] as Map<String, dynamic>?) ?? json;
+    
+    String? firstName = requesterJson['firstName']?.toString() ?? 
+                       requesterJson['first_name']?.toString() ?? 
+                       json['requester_first_name']?.toString();
+                       
+    String? lastName = requesterJson['lastName']?.toString() ?? 
+                      requesterJson['last_name']?.toString() ?? 
+                      json['requester_last_name']?.toString();
+                       
+    String? fullName = requesterJson['fullName']?.toString() ?? 
+                       requesterJson['full_name']?.toString() ?? 
+                       json['requester_full_name']?.toString();
+                       
+    String? email = requesterJson['email']?.toString() ?? 
+                    json['requester_email']?.toString();
 
     // Parse approval steps
     List<ApprovalStepEntity>? approvalSteps;
@@ -87,7 +100,7 @@ class RequestModel extends RequestEntity {
       priority: json['priority'] as String?,
       status: json['status'] ?? 'PENDING',
       rejectionReason: json['rejectionReason'] as String?,
-      createdBy: json['created_by'] ?? requester?['id'] ?? '',
+      createdBy: json['created_by'] ?? requesterJson['id'] ?? '',
       assigneeId: json['assignee_id'] as String?,
       location: json['location'] as String?,
       dueDate: json['dueDate'] is int
@@ -121,35 +134,12 @@ class RequestModel extends RequestEntity {
       approvalSteps: approvalSteps,
       currentStepOrder: json['currentStepOrder'] as int?,
       // Requester
-      requesterFirstName: requester?['firstName'] as String?,
-      requesterLastName: requester?['lastName'] as String?,
-      requesterEmail: requester?['email'] as String?,
+      requesterFirstName: firstName,
+      requesterLastName: lastName,
+      requesterFullName: fullName,
+      requesterEmail: email,
       // Line items
       lineItems: lineItems,
-    );
-  }
-
-  factory RequestModel.fromDb(Request row) {
-    return RequestModel(
-      id: row.id,
-      projectId: row.projectId,
-      type: row.requestType,
-      title: row.title,
-      shortSummary: row.shortSummary,
-      description: row.description,
-      amount: null, // Not in DB table
-      currency: null,
-      priority: row.priority,
-      status: row.status,
-      createdBy: row.createdBy,
-      assigneeId: row.assigneeId,
-      location: row.location,
-      dueDate: row.dueDate,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      serverId: row.serverId,
-      serverUpdatedAt: row.serverUpdatedAt,
-      meta: row.meta != null ? jsonDecode(row.meta!) : null,
     );
   }
 
@@ -182,6 +172,7 @@ class RequestModel extends RequestEntity {
       currentStepOrder: entity.currentStepOrder,
       requesterFirstName: entity.requesterFirstName,
       requesterLastName: entity.requesterLastName,
+      requesterFullName: entity.requesterFullName,
       requesterEmail: entity.requesterEmail,
       lineItems: entity.lineItems,
     );
@@ -222,27 +213,5 @@ class RequestModel extends RequestEntity {
       if (priority != null) 'priority': priority,
       'isDraft': isDraft,
     };
-  }
-
-  RequestsCompanion toCompanion() {
-    return RequestsCompanion(
-      id: Value(id),
-      projectId: Value(projectId),
-      requestType: Value(type),
-      title: Value(title),
-      shortSummary: Value(shortSummary),
-      description: Value(description),
-      status: Value(status),
-      createdBy: Value(createdBy),
-      assigneeId: Value(assigneeId),
-      priority: Value(priority),
-      location: Value(location),
-      dueDate: Value(dueDate),
-      createdAt: Value(createdAt),
-      updatedAt: Value(updatedAt),
-      serverId: Value(serverId),
-      serverUpdatedAt: Value(serverUpdatedAt),
-      meta: Value(meta != null ? jsonEncode(meta) : null),
-    );
   }
 }

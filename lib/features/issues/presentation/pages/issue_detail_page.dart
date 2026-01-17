@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-
+import 'package:field_link/core/presentation/widgets/status_badge.dart';
+import 'package:field_link/core/presentation/widgets/custom_card.dart';
+import 'package:field_link/core/utils/theme/design_system.dart';
 import 'package:field_link/features/issues/domain/entities/issue_comment_entity.dart';
 import 'package:field_link/features/issues/domain/entities/issue_entity.dart';
 import 'package:field_link/features/issues/domain/repositories/issue_repository.dart';
@@ -130,30 +132,32 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
   Widget _buildDetailsTab(BuildContext context, IssueEntity issue) {
     return SingleChildScrollView(
       controller: _scrollController,
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: DesignSystem.spacingL),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildIssueHeader(context, issue),
           const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Divider(height: 32),
+            padding: EdgeInsets.symmetric(horizontal: DesignSystem.spacingM),
+            child: Divider(height: DesignSystem.spacingXL),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: DesignSystem.spacingM),
             child: Text(
               'Media',
-              style: Theme.of(context).textTheme.titleMedium,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: DesignSystem.spacingM),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: DesignSystem.spacingM),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const MediaPicker(),
-                const SizedBox(height: 16),
+                const SizedBox(height: DesignSystem.spacingM),
                 BlocBuilder<MediaUploaderCubit, MediaUploaderState>(
                   builder: (context, state) {
                     final isUploading = state is MediaUploaderInProcess && state.isUploading;
@@ -172,13 +176,13 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
                     return const SizedBox.shrink();
                   },
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: DesignSystem.spacingM),
                 if (issue.mediaIds != null && issue.mediaIds!.isNotEmpty)
                   MediaGallery(mediaIds: issue.mediaIds!)
                 else
                   const Center(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 32.0),
+                      padding: EdgeInsets.symmetric(vertical: DesignSystem.spacingXL),
                       child: Text('No media attached to this issue'),
                     ),
                   ),
@@ -231,55 +235,71 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
 
   Widget _buildIssueHeader(BuildContext context, IssueEntity issue) {
     final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+    return Padding(
+      padding: const EdgeInsets.all(DesignSystem.spacingM),
+      child: CustomCard(
+        padding: const EdgeInsets.all(DesignSystem.spacingM),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Text(
-                    issue.title,
-                    style: theme.textTheme.headlineSmall,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        issue.title,
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: DesignSystem.spacingXS),
+                      if (issue.author != null)
+                        Text(
+                          'By: ${issue.author?['firstName']} ${issue.author?['lastName'] ?? ''}',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: DesignSystem.textSecondaryLight,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
                 _buildStatusDropdown(context, issue),
               ],
             ),
-            const SizedBox(height: 4),
-            if (issue.author != null)
+            const SizedBox(height: DesignSystem.spacingM),
+            if (issue.description != null) ...[
               Text(
-                'By: ${issue.author?['firstName']} ${issue.author?['lastName'] ?? ''}',
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.outline,
+                issue.description!,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: DesignSystem.textPrimaryLight,
+                  height: 1.5,
                 ),
               ),
-            const SizedBox(height: 8),
-            if (issue.description != null) ...[
-              Text(issue.description!, style: theme.textTheme.bodyMedium),
-              const SizedBox(height: 16),
+              const SizedBox(height: DesignSystem.spacingM),
             ],
             Row(
               children: [
-                Icon(Icons.flag, size: 16, color: theme.colorScheme.outline),
-                const SizedBox(width: 4),
-                Text('Priority: ${issue.priority ?? 'Medium'}'),
-                const SizedBox(width: 16),
-                Icon(
-                  Icons.calendar_today,
-                  size: 16,
-                  color: theme.colorScheme.outline,
+                _buildInfoTag(
+                  context,
+                  Icons.flag_outlined,
+                  'Priority: ${issue.priority ?? 'Medium'}',
+                  _getPriorityColor(issue.priority),
                 ),
-                const SizedBox(width: 4),
-                Text(
+                const SizedBox(width: DesignSystem.spacingS),
+                _buildInfoTag(
+                  context,
+                  Icons.calendar_today_outlined,
                   issue.dueDate ?? 'No due date',
+                  DesignSystem.textSecondaryLight,
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: DesignSystem.spacingM),
+            const Divider(),
+            const SizedBox(height: DesignSystem.spacingS),
             _buildAssigneeRow(context, issue),
           ],
         ),
@@ -287,19 +307,87 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
     );
   }
 
+  Widget _buildInfoTag(BuildContext context, IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: DesignSystem.spacingS,
+        vertical: DesignSystem.spacingXS,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(DesignSystem.radiusS),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getPriorityColor(String? priority) {
+    switch (priority?.toUpperCase()) {
+      case 'HIGH':
+      case 'URGENT':
+      case 'CRITICAL':
+        return DesignSystem.error;
+      case 'MEDIUM':
+        return DesignSystem.warning;
+      case 'LOW':
+        return DesignSystem.success;
+      default:
+        return DesignSystem.textSecondaryLight;
+    }
+  }
+
   Widget _buildAssigneeRow(BuildContext context, IssueEntity issue) {
+    final theme = Theme.of(context);
     return Row(
       children: [
-        const Icon(Icons.person, size: 16, color: Colors.grey),
-        const SizedBox(width: 4),
-        Text(
-          'Assignee: ${issue.assignee != null ? "${issue.assignee!['firstName']} ${issue.assignee!['lastName'] ?? ''}" : (issue.assigneeId ?? 'Unassigned')}',
+        CircleAvatar(
+          radius: 12,
+          backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
+          child: const Icon(Icons.person, size: 14, color: DesignSystem.primary),
         ),
-        const Spacer(),
+        const SizedBox(width: DesignSystem.spacingS),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Assignee',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: DesignSystem.textSecondaryLight,
+                ),
+              ),
+              Text(
+                issue.assignee != null 
+                    ? "${issue.assignee!['firstName']} ${issue.assignee!['lastName'] ?? ''}" 
+                    : (issue.assigneeId ?? 'Unassigned'),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
         TextButton(
           onPressed: () {
             _showAssignDialog(context, issue);
           },
+          style: TextButton.styleFrom(
+            visualDensity: VisualDensity.compact,
+            padding: const EdgeInsets.symmetric(horizontal: DesignSystem.spacingS),
+          ),
           child: const Text('Change'),
         ),
       ],
@@ -354,28 +442,30 @@ class _IssueDetailPageState extends State<IssueDetailPage> {
   }
 
   Widget _buildStatusDropdown(BuildContext context, IssueEntity issue) {
-    return DropdownButton<String>(
-      value: issue.status,
-      underline: const SizedBox(),
-      items: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']
-          .map(
-            (status) => DropdownMenuItem(
-              value: status,
-              child: Text(
-                status.replaceAll('_', ' '),
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: DesignSystem.spacingS),
+      decoration: BoxDecoration(
+        color: DesignSystem.primary.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(DesignSystem.radiusS),
+      ),
+      child: DropdownButton<String>(
+        value: issue.status,
+        underline: const SizedBox(),
+        icon: const Icon(Icons.keyboard_arrow_down, size: 16, color: DesignSystem.primary),
+        items: ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']
+            .map(
+              (status) => DropdownMenuItem(
+                value: status,
+                child: StatusBadge(status: status),
               ),
-            ),
-          )
-          .toList(),
-      onChanged: (value) {
-        if (value != null && value != issue.status) {
-          _updateStatus(value);
-        }
-      },
+            )
+            .toList(),
+        onChanged: (value) {
+          if (value != null && value != issue.status) {
+            _updateStatus(value);
+          }
+        },
+      ),
     );
   }
 

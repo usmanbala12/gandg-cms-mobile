@@ -7,16 +7,14 @@ import '../db/daos/sync_queue_dao.dart';
 import '../db/daos/meta_dao.dart';
 import '../db/db_utils.dart';
 import '../network/api_client.dart';
-import '../../features/requests/domain/repositories/request_repository.dart';
 
 /// SyncManager orchestrates the offline sync workflow.
-/// Simplified to only handle request payload syncing.
+/// Simplified to only handle outgoing payload syncing.
 class SyncManager {
   final AppDatabase db;
   final SyncQueueDao syncQueueDao;
   final MetaDao metaDao;
   final ApiClient apiClient;
-  final RequestRepository requestRepository;
   final Logger logger;
 
   SyncManager({
@@ -24,7 +22,6 @@ class SyncManager {
     required this.syncQueueDao,
     required this.metaDao,
     required this.apiClient,
-    required this.requestRepository,
     Logger? logger,
   }) : logger = logger ?? Logger();
 
@@ -94,17 +91,9 @@ class SyncManager {
       );
 
       switch (item.entityType) {
-        case 'request':
-          await requestRepository.processSyncQueueItem(
-            item.projectId,
-            item.entityId,
-            item.action,
-            item.payload,
-          );
-          break;
-
+        // Add other entity types here if needed (e.g., reports, issues if they use SyncManager)
         default:
-          logger.w('Unknown entity type: ${item.entityType}');
+          logger.w('Unknown or unsupported entity type for sync: ${item.entityType}');
       }
 
       logger.i(

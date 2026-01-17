@@ -7,6 +7,7 @@ class ApprovalStepModel extends ApprovalStepEntity {
     required super.approverId,
     super.approverFirstName,
     super.approverLastName,
+    super.approverFullName,
     super.approverEmail,
     required super.status,
     super.maxApprovalAmount,
@@ -18,16 +19,32 @@ class ApprovalStepModel extends ApprovalStepEntity {
   });
 
   factory ApprovalStepModel.fromJson(Map<String, dynamic> json) {
-    final approver = json['approver'] as Map<String, dynamic>?;
+    final approverJson = (json['approver'] as Map<String, dynamic>?) ?? json;
     final delegatedFrom = json['delegatedFrom'] as Map<String, dynamic>?;
     final delegatedTo = json['delegatedTo'] as Map<String, dynamic>?;
 
+    String? firstName = approverJson['firstName']?.toString() ?? 
+                       approverJson['first_name']?.toString() ?? 
+                       json['approver_first_name']?.toString();
+                       
+    String? lastName = approverJson['lastName']?.toString() ?? 
+                      approverJson['last_name']?.toString() ?? 
+                      json['approver_last_name']?.toString();
+                      
+    String? fullName = approverJson['fullName']?.toString() ?? 
+                       approverJson['full_name']?.toString() ?? 
+                       json['approver_full_name']?.toString();
+                      
+    String? email = approverJson['email']?.toString() ?? 
+                    json['approver_email']?.toString();
+
     return ApprovalStepModel(
       order: json['order'] as int? ?? 0,
-      approverId: approver?['id'] ?? json['approverId'] ?? '',
-      approverFirstName: approver?['firstName'] as String?,
-      approverLastName: approver?['lastName'] as String?,
-      approverEmail: approver?['email'] as String?,
+      approverId: approverJson['id']?.toString() ?? json['approverId']?.toString() ?? '',
+      approverFirstName: firstName,
+      approverLastName: lastName,
+      approverFullName: fullName,
+      approverEmail: email,
       status: json['status'] as String? ?? 'PENDING',
       maxApprovalAmount: json['maxApprovalAmount'] != null
           ? (json['maxApprovalAmount'] as num).toDouble()
@@ -62,6 +79,7 @@ class ApprovalStepModel extends ApprovalStepEntity {
       approverId: entity.approverId,
       approverFirstName: entity.approverFirstName,
       approverLastName: entity.approverLastName,
+      approverFullName: entity.approverFullName,
       approverEmail: entity.approverEmail,
       status: entity.status,
       maxApprovalAmount: entity.maxApprovalAmount,

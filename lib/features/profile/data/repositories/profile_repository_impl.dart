@@ -136,15 +136,6 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
     // Count records in remaining tables
     try {
-      final requestsCount = await db
-          .customSelect('SELECT COUNT(*) as count FROM requests')
-          .getSingle();
-      recordsByTable['requests'] = requestsCount.read<int>('count');
-    } catch (_) {
-      recordsByTable['requests'] = 0;
-    }
-
-    try {
       final queueCount = await db
           .customSelect('SELECT COUNT(*) as count FROM sync_queue')
           .getSingle();

@@ -12,7 +12,6 @@ import 'package:field_link/core/db/app_database.dart';
 import 'package:field_link/core/db/daos/project_dao.dart';
 import 'package:field_link/core/db/daos/sync_queue_dao.dart';
 import 'package:field_link/core/db/daos/meta_dao.dart';
-import 'package:field_link/core/db/daos/request_dao.dart';
 import 'package:field_link/core/db/daos/user_dao.dart';
 import 'package:field_link/core/sync/sync_manager.dart';
 import 'package:field_link/features/authentication/data/datasources/auth_remote_datasource.dart';
@@ -95,7 +94,6 @@ Future<void> initDependencies({required String baseUrl}) async {
   sl.registerLazySingleton<ProjectDao>(() => ProjectDao(sl<AppDatabase>()));
   sl.registerLazySingleton<SyncQueueDao>(() => SyncQueueDao(sl<AppDatabase>()));
   sl.registerLazySingleton<MetaDao>(() => MetaDao(sl<AppDatabase>()));
-  sl.registerLazySingleton<RequestDao>(() => RequestDao(sl<AppDatabase>()));
   sl.registerLazySingleton<UserDao>(() => UserDao(sl<AppDatabase>()));
 
   // Network
@@ -129,7 +127,6 @@ Future<void> initDependencies({required String baseUrl}) async {
       syncQueueDao: sl(),
       metaDao: sl(),
       apiClient: sl(),
-      requestRepository: sl(),
     ),
   );
 
@@ -215,10 +212,6 @@ Future<void> initDependencies({required String baseUrl}) async {
 
   sl.registerLazySingleton<RequestRepository>(
     () => RequestRepositoryImpl(
-      db: sl(),
-      requestDao: sl(),
-      metaDao: sl(),
-      syncQueueDao: sl(),
       remoteDataSource: sl(),
       networkInfo: sl(),
     ),

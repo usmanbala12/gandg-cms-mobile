@@ -1,8 +1,8 @@
-//import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-
+import 'package:field_link/core/presentation/widgets/status_badge.dart';
+import 'package:field_link/core/presentation/widgets/custom_card.dart';
+import 'package:field_link/core/utils/theme/design_system.dart';
 import 'package:field_link/core/domain/repository_result.dart';
 import 'package:field_link/features/reports/domain/repositories/report_repository.dart';
 import 'package:field_link/features/reports/domain/entities/report_entity.dart';
@@ -80,25 +80,29 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
           final template = templateResult?.data;
 
           return ListView(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(DesignSystem.spacingM),
             children: [
               if (reportResult.isLocal && reportResult.message != null)
                 _buildSyncNotice(reportResult.message!),
               _buildReportInfoCard(report),
-              const SizedBox(height: 24),
-              const Text(
+              const SizedBox(height: DesignSystem.spacingL),
+              Text(
                 'Submission Data',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: DesignSystem.spacingM),
               _buildSubmissionDataCard(report, template),
               if (report.mediaIds != null && report.mediaIds!.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                const Text(
+                const SizedBox(height: DesignSystem.spacingL),
+                Text(
                   'Attachments',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: DesignSystem.spacingM),
                 MediaGallery(mediaIds: report.mediaIds!),
               ],
             ],
@@ -151,52 +155,53 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
   }
 
   Widget _buildReportInfoCard(ReportEntity report) {
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildInfoRow(
-              'Status',
-              report.status,
-              color: _getStatusColor(report.status),
-            ),
-            const Divider(height: 24),
-            _buildInfoRow('Project', report.projectName ?? 'N/A'),
-            const SizedBox(height: 8),
-            _buildInfoRow('Template', report.formTemplateName ?? 'N/A'),
-            const SizedBox(height: 8),
-            _buildInfoRow('Report #', report.reportNumber ?? 'N/A'),
-            const SizedBox(height: 8),
-            _buildInfoRow('Date', report.reportDate),
-            const SizedBox(height: 8),
-            _buildInfoRow('Author', report.authorName ?? 'N/A'),
-          ],
-        ),
+    return CustomCard(
+      padding: const EdgeInsets.all(DesignSystem.spacingM),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Report Details',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              StatusBadge(status: report.status),
+            ],
+          ),
+          const Divider(height: DesignSystem.spacingXL),
+          _buildInfoRow('Project', report.projectName ?? 'N/A'),
+          const SizedBox(height: DesignSystem.spacingS),
+          _buildInfoRow('Template', report.formTemplateName ?? 'N/A'),
+          const SizedBox(height: DesignSystem.spacingS),
+          _buildInfoRow('Report #', report.reportNumber ?? 'N/A'),
+          const SizedBox(height: DesignSystem.spacingS),
+          _buildInfoRow('Date', report.reportDate),
+          const SizedBox(height: DesignSystem.spacingS),
+          _buildInfoRow('Author', report.authorName ?? 'N/A'),
+        ],
       ),
     );
   }
 
-  Widget _buildInfoRow(String label, String value, {Color? color}) {
+  Widget _buildInfoRow(String label, String value) {
+    final theme = Theme.of(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           label,
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: DesignSystem.textSecondaryLight,
+          ),
         ),
         Text(
           value,
-          style: TextStyle(
+          style: theme.textTheme.bodyMedium?.copyWith(
             fontWeight: FontWeight.w600,
-            color: color,
-            fontSize: 14,
           ),
         ),
       ],
@@ -235,41 +240,33 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
       );
     }
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.grey.shade200),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children:
-              template.fields.map((field) {
-                final fieldResponse = fieldsData[field.id];
-                final value = fieldResponse is Map ? fieldResponse['value'] : fieldResponse;
+    return CustomCard(
+      padding: const EdgeInsets.all(DesignSystem.spacingM),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children:
+            template.fields.map((field) {
+              final fieldResponse = fieldsData[field.id];
+              final value = fieldResponse is Map ? fieldResponse['value'] : fieldResponse;
 
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        field.label,
-                        style: TextStyle(
-                          color: Colors.grey.shade700,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      _renderFieldValue(field, value),
-                    ],
-                  ),
-                );
-              }).toList(),
-        ),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: DesignSystem.spacingM),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      field.label,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: DesignSystem.textSecondaryLight,
+                            fontWeight: FontWeight.w500,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    _renderFieldValue(field, value),
+                  ],
+                ),
+              );
+            }).toList(),
       ),
     );
   }
@@ -360,19 +357,6 @@ class _ReportDetailPageState extends State<ReportDetailPage> {
     }
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toUpperCase()) {
-      case 'SUBMITTED':
-      case 'REVIEWED':
-        return Colors.green;
-      case 'DRAFT':
-        return Colors.blue;
-      case 'PENDING':
-        return Colors.orange;
-      default:
-        return Colors.grey;
-    }
-  }
 }
 
 extension on String {

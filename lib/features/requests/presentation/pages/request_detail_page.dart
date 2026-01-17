@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:field_link/core/utils/theme/design_system.dart';
+import 'package:field_link/core/presentation/widgets/custom_card.dart';
+import 'package:field_link/core/presentation/widgets/status_badge.dart';
 
 import '../../domain/entities/request_entity.dart';
 import '../widgets/approval_timeline.dart';
@@ -18,7 +21,7 @@ class RequestDetailPage extends StatelessWidget {
         slivers: [
           // App bar with status
           SliverAppBar(
-            expandedHeight: 140,
+            expandedHeight: 160,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
@@ -27,45 +30,29 @@ class RequestDetailPage extends StatelessWidget {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
-                      _getStatusColor(request.status),
-                      _getStatusColor(request.status).withValues(alpha: 0.7),
+                      DesignSystem.primary,
+                      DesignSystem.primary.withValues(alpha: 0.7),
                     ],
                   ),
                 ),
                 child: SafeArea(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(56, 16, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(DesignSystem.spacingXL, DesignSystem.spacingM, DesignSystem.spacingM, DesignSystem.spacingM),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        // Status badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Text(
-                            request.status,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 12,
-                            ),
-                          ),
+                        StatusBadge(
+                          status: request.status,
+                          color: Colors.white,
                         ),
-                        const SizedBox(height: 8),
-                        // Request number
+                        const SizedBox(height: DesignSystem.spacingS),
                         Text(
                           request.requestNumber ?? 'Request',
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 22,
+                            fontSize: 24,
                           ),
                         ),
                       ],
@@ -183,20 +170,20 @@ class RequestDetailPage extends StatelessWidget {
 
   Widget _buildTypePrioritySection(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: DesignSystem.spacingM),
       child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+        spacing: DesignSystem.spacingS,
+        runSpacing: DesignSystem.spacingS,
         children: [
           if (request.type != null)
             _buildChip(
-              icon: Icons.category,
+              icon: Icons.category_outlined,
               label: request.type!,
-              color: theme.colorScheme.primary,
+              color: DesignSystem.primary,
             ),
           if (request.priority != null)
             _buildChip(
-              icon: Icons.flag,
+              icon: Icons.flag_outlined,
               label: request.priority!,
               color: _getPriorityColor(request.priority!),
             ),
@@ -237,7 +224,7 @@ class RequestDetailPage extends StatelessWidget {
 
   Widget _buildDescriptionSection(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(DesignSystem.spacingM),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -247,17 +234,13 @@ class RequestDetailPage extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 8),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(12),
-            ),
+          const SizedBox(height: DesignSystem.spacingS),
+          CustomCard(
             child: Text(
               request.description ?? '',
-              style: theme.textTheme.bodyMedium,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                height: 1.5,
+              ),
             ),
           ),
         ],
@@ -267,7 +250,7 @@ class RequestDetailPage extends StatelessWidget {
 
   Widget _buildRequesterCard(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(DesignSystem.spacingM),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -277,31 +260,23 @@ class RequestDetailPage extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: theme.dividerColor.withValues(alpha: 0.5),
-              ),
-            ),
+          const SizedBox(height: DesignSystem.spacingS),
+          CustomCard(
             child: Row(
               children: [
                 CircleAvatar(
                   radius: 24,
-                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  backgroundColor: DesignSystem.primary.withValues(alpha: 0.1),
                   child: Text(
                     _getInitials(request.requesterDisplayName),
-                    style: TextStyle(
-                      color: theme.colorScheme.primary,
+                    style: const TextStyle(
+                      color: DesignSystem.primary,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
                     ),
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: DesignSystem.spacingM),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,7 +292,7 @@ class RequestDetailPage extends StatelessWidget {
                         Text(
                           request.requesterEmail!,
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                            color: DesignSystem.textSecondaryLight,
                           ),
                         ),
                       ],
@@ -334,7 +309,7 @@ class RequestDetailPage extends StatelessWidget {
 
   Widget _buildApprovalSection(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(DesignSystem.spacingM),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -350,13 +325,13 @@ class RequestDetailPage extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primaryContainer,
+                  color: DesignSystem.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(
-                  'v${request.workflowVersion ?? 1}',
+                child: const Text(
+                  'v1.0', // Fallback version
                   style: TextStyle(
-                    color: theme.colorScheme.onPrimaryContainer,
+                    color: DesignSystem.primary,
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
                   ),
@@ -364,16 +339,9 @@ class RequestDetailPage extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: theme.dividerColor.withValues(alpha: 0.5),
-              ),
-            ),
+          const SizedBox(height: DesignSystem.spacingM),
+          CustomCard(
+            padding: const EdgeInsets.all(DesignSystem.spacingM),
             child: ApprovalTimeline(
               steps: request.approvalSteps!,
               currentStep: request.currentStepOrder,
@@ -457,46 +425,39 @@ class RequestDetailPage extends StatelessWidget {
 
   Widget _buildMetadataSection(ThemeData theme) {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(DesignSystem.spacingM),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Details',
+            'Timeline',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: theme.dividerColor.withValues(alpha: 0.5),
-              ),
-            ),
+          const SizedBox(height: DesignSystem.spacingS),
+          CustomCard(
+            padding: const EdgeInsets.all(DesignSystem.spacingM),
             child: Column(
               children: [
                 _buildMetadataRow(
                   theme,
-                  icon: Icons.calendar_today,
+                  icon: Icons.calendar_today_outlined,
                   label: 'Created',
                   value: _formatDateTime(request.createdAt),
                 ),
-                const Divider(height: 24),
+                const Divider(height: DesignSystem.spacingXL),
                 _buildMetadataRow(
                   theme,
-                  icon: Icons.update,
+                  icon: Icons.update_outlined,
                   label: 'Updated',
                   value: _formatDateTime(request.updatedAt),
                 ),
                 if (request.completedAt != null) ...[
-                  const Divider(height: 24),
+                  const Divider(height: DesignSystem.spacingXL),
                   _buildMetadataRow(
                     theme,
-                    icon: Icons.check_circle,
+                    icon: Icons.check_circle_outline,
                     label: 'Completed',
                     value: _formatDateTime(
                       request.completedAt!.millisecondsSinceEpoch,
@@ -522,13 +483,13 @@ class RequestDetailPage extends StatelessWidget {
         Icon(
           icon,
           size: 18,
-          color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+          color: DesignSystem.textSecondaryLight,
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: DesignSystem.spacingM),
         Text(
           label,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            color: DesignSystem.textSecondaryLight,
           ),
         ),
         const Spacer(),
@@ -569,39 +530,19 @@ class RequestDetailPage extends StatelessWidget {
     return '${months[date.month - 1]} ${date.day}, ${date.year} at ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 
-  Color _getStatusColor(String status) {
-    switch (status.toUpperCase()) {
-      case 'DRAFT':
-        return Colors.blueGrey;
-      case 'PENDING':
-        return Colors.orange.shade700;
-      case 'APPROVED':
-        return Colors.green.shade600;
-      case 'REJECTED':
-        return Colors.red.shade600;
-      case 'CANCELLED':
-        return Colors.grey.shade600;
-      case 'EXPIRED':
-        return Colors.brown;
-      default:
-        return Colors.blue;
-    }
-  }
 
   Color _getPriorityColor(String priority) {
     switch (priority.toUpperCase()) {
       case 'LOW':
-        return Colors.grey;
+        return DesignSystem.success;
       case 'MEDIUM':
-        return Colors.blue;
+        return DesignSystem.warning;
       case 'HIGH':
-        return Colors.orange;
       case 'URGENT':
-        return Colors.deepOrange;
       case 'CRITICAL':
-        return Colors.red;
+        return DesignSystem.error;
       default:
-        return Colors.blue;
+        return DesignSystem.primary;
     }
   }
 }
