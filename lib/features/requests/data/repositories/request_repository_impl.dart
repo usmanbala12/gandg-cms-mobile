@@ -103,7 +103,7 @@ class RequestRepositoryImpl implements RequestRepository {
       await db.transaction(() async {
         for (final data in remoteData) {
           // Ensure projectId is present
-          if (data['project_id'] == null) {
+          if (data['project_id'] == null && data['projectId'] == null) {
             data['project_id'] = projectId;
           }
           final model = RequestModel.fromJson(data);
@@ -141,24 +141,93 @@ class RequestRepositoryImpl implements RequestRepository {
   }
 
   @override
-  Future<void> createRequest(RequestEntity request) async {
-    await db.transaction(() async {
-      final model = RequestModel.fromEntity(request);
-      await requestDao.insertRequest(model.toCompanion());
+  Future<RequestEntity?> getRequestDetails(String requestId) async {
+    try {
+      final data = await remoteDataSource.fetchRequestDetails(requestId);
+      if (data.isEmpty) return null;
+      return RequestModel.fromJson(data);
+    } catch (e) {
+      logger.e('Error fetching request details: $e');
+      // Try local cache
+      final row = await requestDao.getByServerId(requestId);
+      if (row != null) return RequestModel.fromDb(row);
+      return null;
+    }
+  }
 
-      await syncQueueDao.enqueue(
-        SyncQueueCompanion.insert(
-          id: const Uuid().v4(),
-          projectId: request.projectId,
-          entityType: 'request',
-          entityId: request.id,
-          action: 'create',
-          payload: Value(jsonEncode(model.toJson())),
-          status: const Value('PENDING'),
-          createdAt: DateTime.now().millisecondsSinceEpoch,
-        ),
+  @override
+  Future<RepositoryResult<List<RequestEntity>>> getPendingApprovals({
+    String? projectId,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    try {
+      final remoteData = await remoteDataSource.fetchPendingApprovals(
+        projectId: projectId,
+        limit: limit,
+        offset: offset,
       );
-    });
+      
+      final requests = remoteData
+          .map((data) => RequestModel.fromJson(data))
+          .toList();
+      
+      return RepositoryResult.remote(requests);
+    } catch (e) {
+      logger.e('Error fetching pending approvals: $e');
+      return RepositoryResult.local([], message: 'Error loading pending approvals');
+    }
+  }
+
+  @override
+  Future<RequestEntity> createRequest(RequestEntity request) async {
+    final model = RequestModel.fromEntity(request);
+    final isOnline = await networkInfo.isOnline();
+
+    if (isOnline) {
+      // Try to create on backend first
+      try {
+        final response = await remoteDataSource.createRequest(
+          request.projectId,
+          model.toCreatePayload(isDraft: request.status == 'DRAFT'),
+        );
+
+        logger.i('Request created on backend: ${response['id']}');
+
+        // Update local with server ID
+        final serverModel = RequestModel.fromJson({
+          ...response,
+          'local_id': request.id,
+          'project_id': request.projectId,
+        });
+
+        await requestDao.insertRequest(serverModel.toCompanion());
+        return serverModel;
+      } catch (e) {
+        logger.e('Failed to create request on backend: $e');
+        rethrow; // Propagate error so UI knows it failed
+      }
+    } else {
+      // Offline: save locally and queue for sync
+      logger.i('Offline: queuing request for sync');
+      await db.transaction(() async {
+        await requestDao.insertRequest(model.toCompanion());
+
+        await syncQueueDao.enqueue(
+          SyncQueueCompanion.insert(
+            id: const Uuid().v4(),
+            projectId: request.projectId,
+            entityType: 'request',
+            entityId: request.id,
+            action: 'create',
+            payload: Value(jsonEncode(model.toJson())),
+            status: const Value('PENDING'),
+            createdAt: DateTime.now().millisecondsSinceEpoch,
+          ),
+        );
+      });
+      return request;
+    }
   }
 
   @override
@@ -180,6 +249,96 @@ class RequestRepositoryImpl implements RequestRepository {
         ),
       );
     });
+  }
+
+  @override
+  Future<void> deleteRequest(String requestId) async {
+    await remoteDataSource.deleteRequest(requestId);
+    // Try to delete from local DB by server ID
+    final localRequest = await requestDao.getByServerId(requestId);
+    if (localRequest != null) {
+      await requestDao.deleteRequest(localRequest.id);
+    }
+  }
+
+  // ========== WORKFLOW ACTIONS ==========
+
+  @override
+  Future<RequestEntity> submitRequest(String requestId) async {
+    final data = await remoteDataSource.submitRequest(requestId);
+    return RequestModel.fromJson(data);
+  }
+
+  @override
+  Future<RequestEntity> approveRequest(
+    String requestId, {
+    String? comments,
+  }) async {
+    final data = await remoteDataSource.approveRequest(
+      requestId,
+      comments: comments,
+    );
+    return RequestModel.fromJson(data);
+  }
+
+  @override
+  Future<RequestEntity> rejectRequest(
+    String requestId, {
+    required String reason,
+    String? comments,
+  }) async {
+    final data = await remoteDataSource.rejectRequest(
+      requestId,
+      reason: reason,
+      comments: comments,
+    );
+    return RequestModel.fromJson(data);
+  }
+
+  @override
+  Future<RequestEntity> delegateApproval(
+    String requestId, {
+    required String toUserId,
+    String? reason,
+  }) async {
+    final data = await remoteDataSource.delegateApproval(
+      requestId,
+      toUserId: toUserId,
+      reason: reason,
+    );
+    return RequestModel.fromJson(data);
+  }
+
+  @override
+  Future<RequestEntity> cancelRequest(
+    String requestId, {
+    String? reason,
+  }) async {
+    final data = await remoteDataSource.cancelRequest(requestId, reason: reason);
+    return RequestModel.fromJson(data);
+  }
+
+  // ========== LINE ITEMS ==========
+
+  @override
+  Future<void> addLineItem(
+    String requestId, {
+    required String description,
+    required int quantity,
+    double? unitPrice,
+    String? unit,
+  }) async {
+    await remoteDataSource.addLineItem(requestId, {
+      'description': description,
+      'quantity': quantity,
+      if (unitPrice != null) 'unitPrice': unitPrice,
+      if (unit != null) 'unit': unit,
+    });
+  }
+
+  @override
+  Future<void> deleteLineItem(String requestId, String itemId) async {
+    await remoteDataSource.deleteLineItem(requestId, itemId);
   }
 
   @override

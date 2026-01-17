@@ -45,3 +45,7 @@ class IssuesUpdated extends IssuesEvent {
   @override
   List<Object?> get props => [issues];
 }
+
+class LoadMoreIssues extends IssuesEvent {
+  const LoadMoreIssues();
+}

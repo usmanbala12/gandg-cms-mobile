@@ -11,77 +11,6 @@ import '../../domain/repositories/issue_repository.dart';
 part 'issues_event.dart';
 part 'issues_state.dart';
 
-/// Top-level function for compute isolate - must be top-level or static
-List<IssueEntity> _filterIssuesInIsolate(_FilterParams params) {
-  final issues = params.issues;
-  final filters = params.filters;
-
-  if (filters.isEmpty) {
-    return issues;
-  }
-
-  return issues.where((issue) {
-    // Status Filter
-    if (filters.containsKey('status')) {
-      final statusFilter = filters['status'] as String;
-      if (statusFilter != 'All' && statusFilter.isNotEmpty) {
-        final status = issue.status?.toUpperCase() ?? 'OPEN';
-        final filter = statusFilter.toUpperCase().replaceAll(' ', '_');
-        if (status != filter) return false;
-      }
-    }
-
-    // Priority Filter
-    if (filters.containsKey('priority')) {
-      final priorityFilter = filters['priority'] as String;
-      if (priorityFilter != 'All' && priorityFilter.isNotEmpty) {
-        final priority = issue.priority?.toUpperCase() ?? 'MEDIUM';
-        final filter = priorityFilter.toUpperCase();
-        if (priority != filter) return false;
-      }
-    }
-
-    // Assignee Filter
-    if (filters.containsKey('assignee_id')) {
-      final assigneeId = filters['assignee_id'] as String;
-      if (assigneeId.isNotEmpty && assigneeId != 'All') {
-        if (issue.assigneeId != assigneeId) return false;
-      }
-    }
-
-    // Category Filter
-    if (filters.containsKey('category')) {
-      final categoryFilter = filters['category'] as String;
-      if (categoryFilter.isNotEmpty && categoryFilter != 'All') {
-        if (issue.category != categoryFilter) return false;
-      }
-    }
-
-    // Search Query
-    if (filters.containsKey('search')) {
-      final query = (filters['search'] as String).toLowerCase();
-      if (query.isNotEmpty) {
-        final title = issue.title.toLowerCase();
-        final desc = issue.description?.toLowerCase() ?? '';
-        final issueNum = issue.issueNumber?.toLowerCase() ?? '';
-        if (!title.contains(query) && 
-            !desc.contains(query) && 
-            !issueNum.contains(query)) return false;
-      }
-    }
-
-    return true;
-  }).toList();
-}
-
-/// Parameters for the isolate filter function
-class _FilterParams {
-  final List<IssueEntity> issues;
-  final Map<String, dynamic> filters;
-
-  const _FilterParams({required this.issues, required this.filters});
-}
-
 class IssuesBloc extends Bloc<IssuesEvent, IssuesState> {
   final IssueRepository repository;
   StreamSubscription? _issuesSubscription;
@@ -89,11 +18,15 @@ class IssuesBloc extends Bloc<IssuesEvent, IssuesState> {
   List<IssueEntity> _allIssues = [];
   Map<String, dynamic> _currentFilters = {};
   String? _lastErrorMessage;
+  String? _currentProjectId;
+  bool _hasReachedMax = false;
+  static const _pageSize = 20;
 
   IssuesBloc({required this.repository}) : super(IssuesInitial()) {
     on<LoadIssues>(_onLoadIssues);
     on<RefreshIssues>(_onRefreshIssues);
     on<FilterIssues>(_onFilterIssues);
+    on<LoadMoreIssues>(_onLoadMoreIssues);
     on<IssuesUpdated>(_onIssuesUpdated);
   }
 
@@ -102,11 +35,17 @@ class IssuesBloc extends Bloc<IssuesEvent, IssuesState> {
     Emitter<IssuesState> emit,
   ) async {
     emit(IssuesLoading());
+    _currentProjectId = event.projectId;
     _currentFilters = event.filters ?? {};
+    _hasReachedMax = false;
+    _allIssues = [];
+
     try {
       final result = await repository.getIssues(
         projectId: event.projectId,
         filters: _currentFilters,
+        limit: _pageSize,
+        offset: 0,
       );
 
       if (result.hasError) {
@@ -114,7 +53,14 @@ class IssuesBloc extends Bloc<IssuesEvent, IssuesState> {
       } else {
         _allIssues = result.issues;
         _lastErrorMessage = result.errorMessage;
-        await _emitFilteredIssues(emit);
+        _hasReachedMax = result.issues.length < _pageSize;
+
+        emit(IssuesLoaded(
+          _allIssues,
+          dataSource: DataSource.remote,
+          errorMessage: _lastErrorMessage,
+          hasReachedMax: _hasReachedMax,
+        ));
       }
     } catch (e) {
       emit(IssuesError(e.toString()));
@@ -125,22 +71,48 @@ class IssuesBloc extends Bloc<IssuesEvent, IssuesState> {
     RefreshIssues event,
     Emitter<IssuesState> emit,
   ) async {
+    // Refresh keeps current filters but resets pagination
+    _currentProjectId = event.projectId;
+    _hasReachedMax = false;
+    // Don't clear _allIssues immediately to avoid UI flicker, 
+    // but the getIssues call will replace it.
+    
     try {
       final result = await repository.getIssues(
         projectId: event.projectId,
         forceRemote: true,
         filters: _currentFilters,
+        limit: _pageSize,
+        offset: 0,
       );
 
       if (result.hasError) {
-        emit(IssuesError(result.errorMessage ?? 'Failed to refresh'));
+        // If refresh fails, keep showing old data but with error
+        if (state is IssuesLoaded) {
+           emit((state as IssuesLoaded).copyWith(
+             errorMessage: result.errorMessage ?? 'Failed to refresh'
+           ));
+        } else {
+           emit(IssuesError(result.errorMessage ?? 'Failed to refresh'));
+        }
       } else {
         _allIssues = result.issues;
         _lastErrorMessage = result.errorMessage;
-        await _emitFilteredIssues(emit);
+        _hasReachedMax = result.issues.length < _pageSize;
+        
+        emit(IssuesLoaded(
+          _allIssues,
+          dataSource: DataSource.remote,
+          errorMessage: _lastErrorMessage,
+          hasReachedMax: _hasReachedMax,
+        ));
       }
     } catch (e) {
-      emit(IssuesError(e.toString()));
+      if (state is IssuesLoaded) {
+         emit((state as IssuesLoaded).copyWith(errorMessage: e.toString()));
+      } else {
+         emit(IssuesError(e.toString()));
+      }
     }
   }
 
@@ -148,33 +120,76 @@ class IssuesBloc extends Bloc<IssuesEvent, IssuesState> {
     FilterIssues event,
     Emitter<IssuesState> emit,
   ) async {
-    _currentFilters = event.filters;
-    await _emitFilteredIssues(emit);
+    // Filtering now requires a reload from server
+    add(LoadIssues(projectId: event.projectId, filters: event.filters));
+  }
+
+  Future<void> _onLoadMoreIssues(
+    LoadMoreIssues event,
+    Emitter<IssuesState> emit,
+  ) async {
+    if (_hasReachedMax || _currentProjectId == null) return;
+    if (state is! IssuesLoaded) return;
+    
+    final currentState = state as IssuesLoaded;
+    if (currentState.isFetchingMore) return;
+
+    // Set fetching more flag
+    emit(currentState.copyWith(isFetchingMore: true));
+
+    try {
+      final result = await repository.getIssues(
+        projectId: _currentProjectId!,
+        filters: _currentFilters,
+        limit: _pageSize,
+        offset: _allIssues.length,
+      );
+
+      if (result.hasError) {
+        emit(currentState.copyWith(
+          isFetchingMore: false,
+          errorMessage: result.errorMessage ?? 'Failed to load more issues',
+        ));
+      } else {
+        final newIssues = result.issues;
+        _hasReachedMax = newIssues.length < _pageSize;
+        _allIssues = [..._allIssues, ...newIssues];
+
+        emit(currentState.copyWith(
+          issues: _allIssues,
+          isFetchingMore: false,
+          hasReachedMax: _hasReachedMax,
+          errorMessage: result.errorMessage,
+        ));
+      }
+    } catch (e) {
+      emit(currentState.copyWith(
+        isFetchingMore: false,
+        errorMessage: e.toString(),
+      ));
+    }
   }
 
   Future<void> _onIssuesUpdated(
     IssuesUpdated event,
     Emitter<IssuesState> emit,
   ) async {
+    // This event seems to come from a stream that we are no longer using for the main list
+    // But if we did receive updates, we should probably merge them carefully or just replace.
+    // tailored for the "watch" behavior which we disabled.
+    // For now, let's just update the local list if it matches.
+    
+    // In a remote-only pagination world, real-time updates are tricky.
+    // We'll assume this event might be manually triggered after an edit.
+    // Ideally we should reload the current page or just update the specific item in the list.
+    // But since the event gives a List<IssueEntity>, it implies a full replace.
+    
     _allIssues = event.issues;
-    await _emitFilteredIssues(emit);
-  }
-
-  Future<void> _emitFilteredIssues(Emitter<IssuesState> emit) async {
-    // Use compute to offload filtering to a background isolate
-    // This prevents jank when filtering large lists
-    final filtered = await compute(
-      _filterIssuesInIsolate,
-      _FilterParams(issues: _allIssues, filters: _currentFilters),
-    );
-
-    emit(
-      IssuesLoaded(
-        filtered,
-        dataSource: DataSource.local, // Stream data is always from local DB
-        errorMessage: _lastErrorMessage,
-      ),
-    );
+    emit(IssuesLoaded(
+      _allIssues,
+      dataSource: DataSource.remote,
+      hasReachedMax: _hasReachedMax,
+    ));
   }
 
   @override

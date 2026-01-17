@@ -3,7 +3,11 @@ import 'dart:convert';
 import 'package:drift/drift.dart';
 
 import '../../../../core/db/app_database.dart';
+import '../../domain/entities/approval_step_entity.dart';
 import '../../domain/entities/request_entity.dart';
+import '../../domain/entities/request_line_item_entity.dart';
+import 'approval_step_model.dart';
+import 'request_line_item_model.dart';
 
 class RequestModel extends RequestEntity {
   const RequestModel({
@@ -28,46 +32,100 @@ class RequestModel extends RequestEntity {
     super.serverId,
     super.serverUpdatedAt,
     super.meta,
+    // Workflow
+    super.workflowVersion,
+    super.approvalDeadline,
+    super.completedAt,
+    super.approvalSteps,
+    super.currentStepOrder,
+    // Requester
+    super.requesterFirstName,
+    super.requesterLastName,
+    super.requesterEmail,
+    // Line items
+    super.lineItems,
   });
 
+  /// Safely truncate description to 50 chars for title
+  static String _truncateDescription(dynamic description) {
+    if (description == null) return 'Request';
+    final str = description.toString();
+    if (str.length <= 50) return str;
+    return '${str.substring(0, 47)}...';
+  }
+
   factory RequestModel.fromJson(Map<String, dynamic> json) {
+    // Parse requester info
+    final requester = json['requester'] as Map<String, dynamic>?;
+
+    // Parse approval steps
+    List<ApprovalStepEntity>? approvalSteps;
+    if (json['approvalSteps'] is List) {
+      approvalSteps = (json['approvalSteps'] as List)
+          .map((step) => ApprovalStepModel.fromJson(step as Map<String, dynamic>))
+          .toList();
+    }
+
+    // Parse line items
+    List<RequestLineItemEntity>? lineItems;
+    if (json['lineItems'] is List) {
+      lineItems = (json['lineItems'] as List)
+          .map((item) => RequestLineItemModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
     return RequestModel(
       id: json['local_id'] ?? json['id'] ?? '',
-      projectId: json['project_id'] ?? '',
-      requestNumber: json['requestNumber'],
-      type: json['type'],
-      title: json['title'] ?? 'Request',
-      shortSummary: json['shortSummary'],
-      description: json['description'],
-      amount:
-          json['amount'] != null ? (json['amount'] as num).toDouble() : null,
-      currency: json['currency'],
-      priority: json['priority'],
+      projectId: json['project_id'] ?? json['projectId'] ?? '',
+      requestNumber: json['requestNumber'] as String?,
+      type: json['type'] as String?,
+      title: json['title'] ?? _truncateDescription(json['description']),
+      shortSummary: json['shortSummary'] as String?,
+      description: json['description'] as String?,
+      amount: json['amount'] != null ? (json['amount'] as num).toDouble() : null,
+      currency: json['currency'] as String?,
+      priority: json['priority'] as String?,
       status: json['status'] ?? 'PENDING',
-      rejectionReason: json['rejectionReason'],
-      createdBy: json['created_by'] ?? json['requester']?['id'] ?? '',
-      assigneeId: json['assignee_id'],
-      location: json['location'],
+      rejectionReason: json['rejectionReason'] as String?,
+      createdBy: json['created_by'] ?? requester?['id'] ?? '',
+      assigneeId: json['assignee_id'] as String?,
+      location: json['location'] as String?,
       dueDate: json['dueDate'] is int
           ? json['dueDate']
           : DateTime.tryParse(json['dueDate'] ?? '')?.millisecondsSinceEpoch,
       createdAt: json['created_at'] is int
           ? json['created_at']
-          : DateTime.tryParse(json['created_at'] ?? '')
+          : DateTime.tryParse(json['createdAt'] ?? json['created_at'] ?? '')
                   ?.millisecondsSinceEpoch ??
               DateTime.now().millisecondsSinceEpoch,
       updatedAt: json['updated_at'] is int
           ? json['updated_at']
-          : DateTime.tryParse(json['updated_at'] ?? '')
+          : DateTime.tryParse(json['updatedAt'] ?? json['updated_at'] ?? '')
                   ?.millisecondsSinceEpoch ??
               DateTime.now().millisecondsSinceEpoch,
-      serverId: json['id'], // Assuming 'id' from API is server ID
+      serverId: json['id'] as String?,
       serverUpdatedAt: json['updated_at'] is int
           ? json['updated_at']
           : DateTime.tryParse(json['updated_at'] ?? '')?.millisecondsSinceEpoch,
       meta: json['metadata'] != null && json['metadata'] is String
           ? jsonDecode(json['metadata'])
           : (json['metadata'] is Map ? json['metadata'] : null),
+      // Workflow
+      workflowVersion: json['workflowVersion'] as int?,
+      approvalDeadline: json['approvalDeadline'] != null
+          ? DateTime.tryParse(json['approvalDeadline'])
+          : null,
+      completedAt: json['completedAt'] != null
+          ? DateTime.tryParse(json['completedAt'])
+          : null,
+      approvalSteps: approvalSteps,
+      currentStepOrder: json['currentStepOrder'] as int?,
+      // Requester
+      requesterFirstName: requester?['firstName'] as String?,
+      requesterLastName: requester?['lastName'] as String?,
+      requesterEmail: requester?['email'] as String?,
+      // Line items
+      lineItems: lineItems,
     );
   }
 
@@ -79,14 +137,7 @@ class RequestModel extends RequestEntity {
       title: row.title,
       shortSummary: row.shortSummary,
       description: row.description,
-      // Amount/Currency/RequestNumber not in DB table yet?
-      // Checking table definition:
-      // TextColumn get requestType => text().nullable()();
-      // TextColumn get title => text()();
-      // TextColumn get shortSummary => text().nullable()();
-      // TextColumn get location => text().nullable()();
-      // IntColumn get dueDate => integer().nullable()();
-      amount: null, // TODO: Extract from meta if stored there
+      amount: null, // Not in DB table
       currency: null,
       priority: row.priority,
       status: row.status,
@@ -125,6 +176,14 @@ class RequestModel extends RequestEntity {
       serverId: entity.serverId,
       serverUpdatedAt: entity.serverUpdatedAt,
       meta: entity.meta,
+      approvalDeadline: entity.approvalDeadline,
+      completedAt: entity.completedAt,
+      approvalSteps: entity.approvalSteps,
+      currentStepOrder: entity.currentStepOrder,
+      requesterFirstName: entity.requesterFirstName,
+      requesterLastName: entity.requesterLastName,
+      requesterEmail: entity.requesterEmail,
+      lineItems: entity.lineItems,
     );
   }
 
@@ -150,6 +209,18 @@ class RequestModel extends RequestEntity {
       'created_at': createdAt,
       'updated_at': updatedAt,
       'metadata': meta,
+    };
+  }
+
+  /// Create payload for API request
+  Map<String, dynamic> toCreatePayload({bool isDraft = false}) {
+    return {
+      'type': type,
+      'description': description,
+      if (amount != null) 'amount': amount,
+      if (currency != null) 'currency': currency,
+      if (priority != null) 'priority': priority,
+      'isDraft': isDraft,
     };
   }
 

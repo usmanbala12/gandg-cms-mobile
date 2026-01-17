@@ -34,6 +34,8 @@ class ReportRepositoryImpl implements ReportRepository {
   Future<RepositoryResult<List<ReportEntity>>> getReports({
     required String projectId,
     bool forceRemote = false,
+    int page = 0,
+    int size = 10,
   }) async {
     final isOnline = await networkInfo.isOnline();
 
@@ -45,8 +47,12 @@ class ReportRepositoryImpl implements ReportRepository {
     }
 
     try {
-      logger.i('Fetching reports from remote API for project $projectId');
-      final remoteData = await remoteDataSource.fetchProjectReports(projectId);
+      logger.i('Fetching reports from remote API for project $projectId (page: $page, size: $size)');
+      final remoteData = await remoteDataSource.fetchProjectReports(
+        projectId,
+        page: page,
+        size: size,
+      );
 
       final reports = remoteData
           .map((data) => ReportModel.fromJson(data))

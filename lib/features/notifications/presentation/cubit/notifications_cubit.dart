@@ -1,11 +1,8 @@
-import 'package:bloc/bloc.dart';
-import 'package:equatable/equatable.dart';
-
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dart:async';
-import '../../domain/repositories/notification_repository.dart';
-import '../../domain/entities/notification_entity.dart';
+import 'package:field_link/features/notifications/domain/repositories/notification_repository.dart';
 
-part 'notifications_state.dart';
+import 'package:field_link/features/notifications/presentation/cubit/notifications_state.dart';
 
 class NotificationsCubit extends Cubit<NotificationsState> {
   final NotificationRepository repository;

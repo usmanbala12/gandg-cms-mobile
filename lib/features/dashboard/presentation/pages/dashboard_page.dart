@@ -11,10 +11,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
+import 'package:field_link/features/notifications/presentation/cubit/notifications_cubit.dart';
+import 'package:field_link/features/notifications/presentation/cubit/notifications_state.dart';
+import 'package:field_link/features/more/presentation/pages/notifications_page.dart';
 import '../bloc/dashboard_cubit.dart';
 import '../widgets/project_selector.dart';
 import '../widgets/recent_activity_tile.dart';
-import '../widgets/sync_status_widget.dart';
+
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -136,15 +139,91 @@ class _DashboardHeader extends StatelessWidget {
                     ),
                   ],
                 ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: DesignSystem.surfaceLight,
-                    shape: BoxShape.circle,
-                    boxShadow: DesignSystem.shadowSm,
-                    border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
-                  ),
-                   padding: const EdgeInsets.all(8),
-                   child: const SyncStatusWidget(),
+                Row(
+                  children: [
+                    BlocBuilder<DashboardCubit, DashboardState>(
+                      buildWhen: (previous, current) =>
+                          previous.offline != current.offline,
+                      builder: (context, state) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: DesignSystem.surfaceLight,
+                            shape: BoxShape.circle,
+                            boxShadow: DesignSystem.shadowSm,
+                            border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+                          ),
+                          padding: const EdgeInsets.all(8),
+                          child: Icon(
+                            state.offline ? Icons.wifi_off : Icons.wifi,
+                            color: state.offline 
+                                ? DesignSystem.error 
+                                : DesignSystem.textPrimaryLight,
+                            size: 24,
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 12),
+                    BlocBuilder<NotificationsCubit, NotificationsState>(
+                      builder: (context, state) {
+                        final unreadCount = state is NotificationsLoaded ? state.unreadCount : 0;
+                        return Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            IconButton(
+                              onPressed: () {
+                                final notificationsCubit = context.read<NotificationsCubit>();
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => BlocProvider.value(
+                                      value: notificationsCubit,
+                                      child: const NotificationsPage(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: Icon(
+                                Icons.notifications_outlined,
+                                color: DesignSystem.textPrimaryLight,
+                                size: 28,
+                              ),
+                              style: IconButton.styleFrom(
+                                backgroundColor: DesignSystem.surfaceLight,
+                                padding: const EdgeInsets.all(8),
+                                shape: const CircleBorder(),
+                              ),
+                            ),
+                            if (unreadCount > 0)
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: DesignSystem.error,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minWidth: 16,
+                                    minHeight: 16,
+                                  ),
+                                  child: Text(
+                                    unreadCount > 99 ? '99+' : unreadCount.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),

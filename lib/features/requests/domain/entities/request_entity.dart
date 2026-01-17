@@ -1,5 +1,8 @@
 import 'package:equatable/equatable.dart';
 
+import 'approval_step_entity.dart';
+import 'request_line_item_entity.dart';
+
 class RequestEntity extends Equatable {
   final String id;
   final String projectId;
@@ -11,7 +14,7 @@ class RequestEntity extends Equatable {
   final double? amount;
   final String? currency;
   final String? priority; // LOW, MEDIUM, HIGH, URGENT, CRITICAL
-  final String status; // PENDING, APPROVED, REJECTED, CANCELLED
+  final String status; // DRAFT, PENDING, APPROVED, REJECTED, CANCELLED, EXPIRED
   final String? rejectionReason;
   final String createdBy;
   final String? assigneeId;
@@ -22,6 +25,21 @@ class RequestEntity extends Equatable {
   final String? serverId;
   final int? serverUpdatedAt;
   final Map<String, dynamic>? meta;
+
+  // Workflow fields
+  final int? workflowVersion;
+  final DateTime? approvalDeadline;
+  final DateTime? completedAt;
+  final List<ApprovalStepEntity>? approvalSteps;
+  final int? currentStepOrder;
+
+  // Requester info (from API)
+  final String? requesterFirstName;
+  final String? requesterLastName;
+  final String? requesterEmail;
+
+  // Line items
+  final List<RequestLineItemEntity>? lineItems;
 
   const RequestEntity({
     required this.id,
@@ -45,7 +63,38 @@ class RequestEntity extends Equatable {
     this.serverId,
     this.serverUpdatedAt,
     this.meta,
+    // Workflow
+    this.workflowVersion,
+    this.approvalDeadline,
+    this.completedAt,
+    this.approvalSteps,
+    this.currentStepOrder,
+    // Requester
+    this.requesterFirstName,
+    this.requesterLastName,
+    this.requesterEmail,
+    // Line items
+    this.lineItems,
   });
+
+  /// Display name for the requester
+  String get requesterDisplayName {
+    if (requesterFirstName != null && requesterLastName != null) {
+      return '$requesterFirstName $requesterLastName';
+    }
+    if (requesterFirstName != null) return requesterFirstName!;
+    if (requesterEmail != null) return requesterEmail!;
+    return createdBy;
+  }
+
+  /// Check if the request can be edited
+  bool get canEdit => status == 'DRAFT';
+
+  /// Check if the request can be submitted
+  bool get canSubmit => status == 'DRAFT';
+
+  /// Check if the request can be cancelled
+  bool get canCancel => status == 'DRAFT' || status == 'PENDING';
 
   RequestEntity copyWith({
     String? id,
@@ -69,6 +118,14 @@ class RequestEntity extends Equatable {
     String? serverId,
     int? serverUpdatedAt,
     Map<String, dynamic>? meta,
+    DateTime? approvalDeadline,
+    DateTime? completedAt,
+    List<ApprovalStepEntity>? approvalSteps,
+    int? currentStepOrder,
+    String? requesterFirstName,
+    String? requesterLastName,
+    String? requesterEmail,
+    List<RequestLineItemEntity>? lineItems,
   }) {
     return RequestEntity(
       id: id ?? this.id,
@@ -92,6 +149,14 @@ class RequestEntity extends Equatable {
       serverId: serverId ?? this.serverId,
       serverUpdatedAt: serverUpdatedAt ?? this.serverUpdatedAt,
       meta: meta ?? this.meta,
+      approvalDeadline: approvalDeadline ?? this.approvalDeadline,
+      completedAt: completedAt ?? this.completedAt,
+      approvalSteps: approvalSteps ?? this.approvalSteps,
+      currentStepOrder: currentStepOrder ?? this.currentStepOrder,
+      requesterFirstName: requesterFirstName ?? this.requesterFirstName,
+      requesterLastName: requesterLastName ?? this.requesterLastName,
+      requesterEmail: requesterEmail ?? this.requesterEmail,
+      lineItems: lineItems ?? this.lineItems,
     );
   }
 
@@ -118,5 +183,13 @@ class RequestEntity extends Equatable {
         serverId,
         serverUpdatedAt,
         meta,
+        approvalDeadline,
+        completedAt,
+        approvalSteps,
+        currentStepOrder,
+        requesterFirstName,
+        requesterLastName,
+        requesterEmail,
+        lineItems,
       ];
 }

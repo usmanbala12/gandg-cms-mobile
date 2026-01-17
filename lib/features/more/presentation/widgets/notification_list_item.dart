@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
-import '../../../notifications/domain/entities/notification_entity.dart';
+import 'package:field_link/features/notifications/domain/entities/notification_entity.dart';
 
 class NotificationListItem extends StatelessWidget {
   final NotificationEntity notification;

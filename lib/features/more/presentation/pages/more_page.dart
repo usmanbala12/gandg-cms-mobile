@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'my_requests_page.dart';
-import 'notifications_page.dart';
 import 'request_create_page.dart';
 import 'settings_page.dart';
 
@@ -56,28 +55,6 @@ class MorePage extends StatelessWidget {
               ),
             ],
           ),
-
-          const SizedBox(height: 24),
-
-          // Notifications Section
-          _buildSectionHeader(context, 'Notifications'),
-          const SizedBox(height: 8),
-          _buildCard(
-            context,
-            children: [
-              _buildMenuItem(
-                context,
-                icon: Icons.notifications_outlined,
-                title: 'Notifications',
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const NotificationsPage()),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 24),
 
           // Settings Section
           _buildSectionHeader(context, 'Settings'),

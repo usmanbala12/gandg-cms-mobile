@@ -8,6 +8,8 @@ abstract class ReportRepository {
   Future<RepositoryResult<List<ReportEntity>>> getReports({
     required String projectId,
     bool forceRemote = false,
+    int page = 0,
+    int size = 10,
   });
   
   Future<void> createReport(ReportEntity report);

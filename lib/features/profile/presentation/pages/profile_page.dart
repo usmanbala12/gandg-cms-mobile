@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../../core/di/injection_container.dart';
 import '../../../authentication/presentation/bloc/auth/auth_bloc.dart';
 import '../../../authentication/presentation/bloc/auth/auth_event.dart';
+import '../../../more/presentation/pages/settings_page.dart';
 import '../cubit/profile_cubit.dart';
 import '../widgets/logout_section.dart';
 import '../widgets/profile_header.dart';
@@ -152,6 +152,8 @@ class _ProfilePageContent extends StatelessWidget {
                         context.read<ProfileCubit>().clearMediaCache();
                       },
                     ),
+                    // Settings & About Section (moved from More tab)
+                    _buildMenuSection(context),
 
                     // Logout
                     LogoutSection(
@@ -169,6 +171,75 @@ class _ProfilePageContent extends StatelessWidget {
 
           return const SizedBox.shrink();
         },
+      ),
+    );
+  }
+
+  Widget _buildMenuSection(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'App',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: theme.dividerColor),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.settings_outlined),
+                  title: const Text('Settings'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SettingsPage()),
+                    );
+                  },
+                ),
+                Divider(height: 1, color: theme.dividerColor),
+                ListTile(
+                  leading: const Icon(Icons.info_outline),
+                  title: const Text('About'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    showAboutDialog(
+                      context: context,
+                      applicationName: 'Field Link',
+                      applicationVersion: '1.0.0',
+                      applicationLegalese: '© 2025 Field Link Inc.',
+                      applicationIcon: Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          Icons.build,
+                          color: theme.colorScheme.onPrimary,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -16,11 +16,13 @@ class RequestCreateCubit extends Cubit<RequestCreateState> {
   Future<void> submit({
     required String projectId,
     required String type,
+    required String title,
     required String description,
     required String priority,
     required String createdBy,
     double? amount,
     String? currency,
+    bool isDraft = false,
   }) async {
     emit(RequestCreateSubmitting());
 
@@ -30,15 +32,15 @@ class RequestCreateCubit extends Cubit<RequestCreateState> {
         id: const Uuid().v4(),
         projectId: projectId,
         type: type,
+        title: title,
         description: description,
         amount: amount,
         currency: currency,
         priority: priority,
-        status: 'PENDING',
+        status: isDraft ? 'DRAFT' : 'PENDING',
         createdBy: createdBy,
         createdAt: now,
         updatedAt: now,
-        title: '',
       );
 
       await repository.createRequest(request);

@@ -238,35 +238,48 @@ class _IssuesListPageState extends State<IssuesListPage> {
                                     ],
                                   ),
                                 )
-                              : RefreshIndicator(
-                                  onRefresh: () async {
-                                    _bloc.add(
-                                      RefreshIssues(projectId: _projectId!),
-                                    );
-                                  },
-                                  color: DesignSystem.primary,
-                                  child: ListView.builder(
-                                    padding: const EdgeInsets.only(top: 8),
-                                    itemCount: state.issues.length,
-                                    itemBuilder: (context, index) {
-                                      final issue = state.issues[index];
-                                      return IssueTile(
-                                        issue: issue,
-                                        onTap: () {
-                                          Navigator.push(
-                                            context,
-                                            MaterialPageRoute(
-                                              builder: (context) =>
-                                                  IssueDetailPage(
+                              : NotificationListener<ScrollNotification>(
+                                    onNotification: _onScroll,
+                                    child: RefreshIndicator(
+                                      onRefresh: () async {
+                                        if (_projectId != null) {
+                                          _bloc.add(RefreshIssues(projectId: _projectId!));
+                                        }
+                                      },
+                                      color: DesignSystem.primary,
+                                      child: ListView.builder(
+                                        padding: const EdgeInsets.only(top: 8),
+                                        itemCount: state.hasReachedMax
+                                            ? state.issues.length
+                                            : state.issues.length + 1,
+                                        itemBuilder: (context, index) {
+                                          if (index >= state.issues.length) {
+                                            return const Padding(
+                                              padding: EdgeInsets.symmetric(vertical: 16.0),
+                                              child: Center(
+                                                child: CircularProgressIndicator(),
+                                              ),
+                                            );
+                                          }
+                                          final issue = state.issues[index];
+                                          return IssueTile(
+                                            issue: issue,
+                                            onTap: () {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) =>
+                                                      IssueDetailPage(
                                                     issueId: issue.id,
                                                   ),
-                                            ),
+                                                ),
+                                              );
+                                            },
                                           );
                                         },
-                                      );
-                                    },
+                                      ),
+                                    ),
                                   ),
-                                ),
                         ),
                       ],
                     );
@@ -292,5 +305,18 @@ class _IssuesListPageState extends State<IssuesListPage> {
           child: const Icon(Icons.add),
         ),
       );
+  }
+
+  bool _onScroll(ScrollNotification scrollInfo) {
+    final state = _bloc.state;
+    if (state is! IssuesLoaded) return false;
+
+    if (scrollInfo.metrics.pixels >=
+            scrollInfo.metrics.maxScrollExtent - 200 &&
+        !state.hasReachedMax &&
+        !state.isFetchingMore) {
+      _bloc.add(const LoadMoreIssues());
+    }
+    return false;
   }
 }

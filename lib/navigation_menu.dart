@@ -1,7 +1,7 @@
 import 'package:field_link/core/utils/constants/colors.dart';
 import 'package:field_link/core/utils/helpers/helper_function.dart';
 import 'package:field_link/features/dashboard/presentation/pages/dashboard_page.dart';
-import 'package:field_link/features/more/presentation/pages/more_page.dart';
+import 'package:field_link/features/requests/presentation/pages/requests_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -65,9 +65,9 @@ class NavigationMenu extends StatelessWidget {
                 label: 'Issues',
               ),
               NavigationDestination(
-                icon: Icon(Icons.more_horiz_outlined),
-                selectedIcon: Icon(Icons.more_horiz),
-                label: 'More',
+                icon: Icon(Icons.request_page_outlined),
+                selectedIcon: Icon(Icons.request_page),
+                label: 'Requests',
               ),
               NavigationDestination(
                 icon: Icon(Icons.person_outline),
@@ -93,7 +93,7 @@ class NavigationController extends GetxController {
     const DashboardPage(),
     const ReportsListPage(),
     const IssuesListPage(),
-    const MorePage(),
+    const RequestsListPage(),
     const ProfilePage(),
   ];
 }

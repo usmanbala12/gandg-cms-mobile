@@ -715,6 +715,188 @@ class ApiClient {
     }
   }
 
+  /// Delete a request.
+  Future<void> deleteRequest(String requestId) async {
+    try {
+      final response = await dio.delete('/api/v1/requests/$requestId');
+      logger.i('Deleted request $requestId: ${response.statusCode}');
+    } catch (e) {
+      logger.e('Error deleting request $requestId: $e');
+      rethrow;
+    }
+  }
+
+  /// Submit a draft request for approval.
+  Future<Map<String, dynamic>> submitRequest(String requestId) async {
+    try {
+      final response = await dio.post('/api/v1/requests/$requestId/submit');
+      logger.i('Submitted request $requestId: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return _unwrapMap(response.data);
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error submitting request $requestId: $e');
+      rethrow;
+    }
+  }
+
+  /// Approve a pending request.
+  Future<Map<String, dynamic>> approveRequest(
+    String requestId, {
+    String? comments,
+  }) async {
+    try {
+      final response = await dio.post(
+        '/api/v1/requests/$requestId/approve',
+        data: {'comments': comments},
+      );
+      logger.i('Approved request $requestId: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return _unwrapMap(response.data);
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error approving request $requestId: $e');
+      rethrow;
+    }
+  }
+
+  /// Reject a pending request.
+  Future<Map<String, dynamic>> rejectRequest(
+    String requestId, {
+    required String reason,
+    String? comments,
+  }) async {
+    try {
+      final response = await dio.post(
+        '/api/v1/requests/$requestId/reject',
+        data: {'reason': reason, 'comments': comments},
+      );
+      logger.i('Rejected request $requestId: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return _unwrapMap(response.data);
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error rejecting request $requestId: $e');
+      rethrow;
+    }
+  }
+
+  /// Delegate approval to another user.
+  Future<Map<String, dynamic>> delegateApproval(
+    String requestId, {
+    required String toUserId,
+    String? reason,
+  }) async {
+    try {
+      final response = await dio.post(
+        '/api/v1/requests/$requestId/delegate',
+        data: {'toUserId': toUserId, 'reason': reason},
+      );
+      logger.i('Delegated approval for request $requestId: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return _unwrapMap(response.data);
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error delegating approval for request $requestId: $e');
+      rethrow;
+    }
+  }
+
+  /// Cancel an active request.
+  Future<Map<String, dynamic>> cancelRequest(
+    String requestId, {
+    String? reason,
+  }) async {
+    try {
+      final response = await dio.post(
+        '/api/v1/requests/$requestId/cancel',
+        data: {'reason': reason},
+      );
+      logger.i('Cancelled request $requestId: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return _unwrapMap(response.data);
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error cancelling request $requestId: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetch requests pending the current user's approval.
+  Future<List<Map<String, dynamic>>> fetchPendingApprovals({
+    String? projectId,
+    int limit = 50,
+    int offset = 0,
+  }) async {
+    try {
+      final queryParams = {
+        'approver_id': 'me',
+        'limit': limit,
+        'offset': offset,
+        if (projectId != null) 'project_id': projectId,
+      };
+
+      final response = await dio.get(
+        '/api/v1/requests/pending',
+        queryParameters: queryParams,
+      );
+      logger.i('Fetched pending approvals: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return _unwrapList(response.data);
+      }
+      return [];
+    } catch (e) {
+      logger.e('Error fetching pending approvals: $e');
+      rethrow;
+    }
+  }
+
+  /// Add a line item to a request.
+  Future<Map<String, dynamic>> addRequestLineItem(
+    String requestId,
+    Map<String, dynamic> payload,
+  ) async {
+    try {
+      final response = await dio.post(
+        '/api/v1/requests/$requestId/line-items',
+        data: payload,
+      );
+      logger.i('Added line item to request $requestId: ${response.statusCode}');
+
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return _unwrapMap(response.data);
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error adding line item to request $requestId: $e');
+      rethrow;
+    }
+  }
+
+  /// Delete a line item from a request.
+  Future<void> deleteRequestLineItem(String requestId, String itemId) async {
+    try {
+      final response = await dio.delete(
+        '/api/v1/requests/$requestId/line-items/$itemId',
+      );
+      logger.i('Deleted line item $itemId from request $requestId: ${response.statusCode}');
+    } catch (e) {
+      logger.e('Error deleting line item $itemId from request $requestId: $e');
+      rethrow;
+    }
+  }
+
   // ========== NOTIFICATION ENDPOINTS ==========
 
   /// Fetch paginated notifications for the current user.
@@ -823,6 +1005,10 @@ class ApiClient {
   List<Map<String, dynamic>> _unwrapList(dynamic data) {
     if (data is Map && data['data'] is Map && data['data']['content'] is List) {
       return List<Map<String, dynamic>>.from(data['data']['content']);
+    }
+    // Handle direct pagination response: data -> content
+    if (data is Map && data['content'] is List) {
+      return List<Map<String, dynamic>>.from(data['content']);
     }
     if (data is Map && data['data'] is List) {
       return List<Map<String, dynamic>>.from(data['data']);

@@ -1,5 +1,5 @@
-import '../../../../core/domain/repository_result.dart';
-import '../entities/notification_entity.dart';
+import 'package:field_link/core/domain/repository_result.dart';
+import 'package:field_link/features/notifications/domain/entities/notification_entity.dart';
 
 /// Repository interface for notification operations.
 /// See API endpoints: /api/v1/notifications/*

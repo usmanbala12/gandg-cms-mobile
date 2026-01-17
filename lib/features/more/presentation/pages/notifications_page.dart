@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:get/get.dart';
-import '../../../notifications/presentation/cubit/notifications_cubit.dart';
-import '../widgets/notification_list_item.dart';
+import 'package:field_link/features/notifications/presentation/cubit/notifications_cubit.dart';
+import 'package:field_link/features/notifications/presentation/cubit/notifications_state.dart';
+import 'package:field_link/features/more/presentation/widgets/notification_list_item.dart';
 
 class NotificationsPage extends StatelessWidget {
   const NotificationsPage({super.key});

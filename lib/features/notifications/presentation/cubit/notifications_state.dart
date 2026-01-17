@@ -1,4 +1,6 @@
-part of 'notifications_cubit.dart';
+import 'package:equatable/equatable.dart';
+
+import 'package:field_link/features/notifications/domain/entities/notification_entity.dart';
 
 abstract class NotificationsState extends Equatable {
   const NotificationsState();

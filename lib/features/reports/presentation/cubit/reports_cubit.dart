@@ -14,6 +14,11 @@ class ReportsCubit extends Cubit<ReportsState> {
   StreamSubscription? _dashboardSubscription;
   StreamSubscription? _reportsSubscription;
 
+  // Pagination state
+  int _currentPage = 0;
+  static const int _pageSize = 10;
+  bool _hasReachedMax = false;
+
   ReportsCubit({
     required ReportRepository repository,
     required DashboardCubit dashboardCubit,
@@ -24,6 +29,9 @@ class ReportsCubit extends Cubit<ReportsState> {
        super(ReportsInitial()) {
     _dashboardSubscription = _dashboardCubit.stream.listen((state) {
       if (state.selectedProjectId != null) {
+        // Reset pagination on project change
+        _currentPage = 0;
+        _hasReachedMax = false;
         loadReports(state.selectedProjectId!);
       } else {
         emit(ReportsNoProjectSelected());
@@ -45,30 +53,92 @@ class ReportsCubit extends Cubit<ReportsState> {
     _logger.i(
       'Loading reports for project: $projectId (forceRefresh: $forceRefresh)',
     );
-    emit(ReportsLoading());
+    
+    // Reset pagination on fresh load or refresh
+    _currentPage = 0;
+    _hasReachedMax = false;
+    
+    // Don't emit loading if refreshing to avoid flicker, unless it's initial
+    if (state is! ReportsLoaded) {
+      emit(ReportsLoading());
+    } else if (forceRefresh) {
+      // Optional: emit a refreshing state if you had one, or keeping existing list is fine
+      // But clearing list might be safer for "pull to refresh" to ensure consistency
+      // For now we just keep the loading indicator minimal or rely on RefreshIndicator
+    }
 
     try {
-      // Cancel existing subscription if any
+      // Cancel existing subscription if any (though we use futures now)
       await _reportsSubscription?.cancel();
 
-      // Fetch reports from remote
+      // Fetch reports from remote (page 0)
       final result = await _repository.getReports(
         projectId: projectId,
         forceRemote: forceRefresh,
+        page: 0,
+        size: _pageSize,
       );
 
       if (result.hasError) {
         emit(ReportsError(result.message ?? 'Unknown error'));
       } else {
+        final newReports = result.data ?? [];
+        _hasReachedMax = newReports.length < _pageSize;
+        
         // Emit the fetched reports
         emit(ReportsLoaded(
-          reports: result.data,
+          reports: newReports,
           message: result.message,
+          hasReachedMax: _hasReachedMax,
         ));
       }
     } catch (e) {
       _logger.e('Error loading reports: $e');
       emit(ReportsError(e.toString()));
+    }
+  }
+
+  Future<void> loadMoreReports() async {
+    final projectId = _dashboardCubit.state.selectedProjectId;
+    if (projectId == null) return;
+    
+    if (_hasReachedMax) return;
+    if (state is! ReportsLoaded) return;
+    
+    final currentState = state as ReportsLoaded;
+    if (currentState.isFetchingMore) return;
+
+    // Set fetching more flag
+    emit(currentState.copyWith(isFetchingMore: true));
+
+    try {
+      final nextPage = _currentPage + 1;
+      
+      final result = await _repository.getReports(
+        projectId: projectId,
+        page: nextPage,
+        size: _pageSize,
+      );
+
+      if (result.hasError) {
+        emit(currentState.copyWith(
+          isFetchingMore: false,
+          // Could set a one-time error message or just ignore
+        ));
+      } else {
+        final newReports = result.data ?? [];
+        _hasReachedMax = newReports.length < _pageSize;
+        _currentPage = nextPage;
+        
+        emit(currentState.copyWith(
+          reports: [...currentState.reports, ...newReports],
+          hasReachedMax: _hasReachedMax,
+          isFetchingMore: false,
+        ));
+      }
+    } catch (e) {
+      _logger.e('Error loading more reports: $e');
+      emit(currentState.copyWith(isFetchingMore: false));
     }
   }
 

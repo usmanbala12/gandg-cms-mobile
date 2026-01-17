@@ -104,10 +104,14 @@ class _ReportsListView extends StatelessWidget {
                   _ReportsList(
                     reports: submittedReports,
                     emptyMessage: 'No submitted reports',
+                    hasReachedMax: state.hasReachedMax,
+                    isFetchingMore: state.isFetchingMore,
                   ),
                   _ReportsList(
                     reports: pendingReports,
                     emptyMessage: 'No pending reports',
+                    hasReachedMax: state.hasReachedMax,
+                    isFetchingMore: state.isFetchingMore,
                   ),
                 ],
               );
@@ -141,89 +145,114 @@ class _ReportsListView extends StatelessWidget {
 class _ReportsList extends StatelessWidget {
   final List<ReportEntity> reports;
   final String emptyMessage;
+  final bool hasReachedMax;
+  final bool isFetchingMore;
 
   const _ReportsList({
     required this.reports,
     required this.emptyMessage,
+    required this.hasReachedMax,
+    required this.isFetchingMore,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (reports.isEmpty) {
+    if (reports.isEmpty && !isFetchingMore) {
       return Center(
         child: Text(
           emptyMessage,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-            color: DesignSystem.textSecondaryLight,
-          ),
+                color: DesignSystem.textSecondaryLight,
+              ),
         ),
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: () => context.read<ReportsCubit>().refresh(),
-      color: DesignSystem.primary,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: reports.length,
-        itemBuilder: (context, index) {
-          final report = reports[index];
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: CustomCard(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ReportDetailPage(
-                      projectId: report.projectId,
-                      reportId: report.id,
+    return NotificationListener<ScrollNotification>(
+      onNotification: (scrollInfo) {
+        if (scrollInfo.metrics.pixels >=
+                scrollInfo.metrics.maxScrollExtent - 200 &&
+            !hasReachedMax &&
+            !isFetchingMore) {
+          context.read<ReportsCubit>().loadMoreReports();
+        }
+        return false;
+      },
+      child: RefreshIndicator(
+        onRefresh: () => context.read<ReportsCubit>().refresh(),
+        color: DesignSystem.primary,
+        child: ListView.builder(
+          padding: const EdgeInsets.all(16),
+          // Add 1 for the loader if there are more pages
+          itemCount: hasReachedMax ? reports.length : reports.length + 1,
+          itemBuilder: (context, index) {
+            if (index >= reports.length) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16.0),
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              );
+            }
+            final report = reports[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: CustomCard(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ReportDetailPage(
+                        projectId: report.projectId,
+                        reportId: report.id,
+                      ),
                     ),
-                  ),
-                );
-              },
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          report.reportNumber ?? 'New Report',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: DesignSystem.textPrimaryLight,
+                  );
+                },
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            report.reportNumber ?? 'New Report',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: DesignSystem.textPrimaryLight,
+                                ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      StatusBadge(status: report.status),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.calendar_today_outlined, 
-                        size: 14, 
-                         color: DesignSystem.textSecondaryLight,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        report.reportDate,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        const SizedBox(width: 8),
+                        StatusBadge(status: report.status),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.calendar_today_outlined,
+                          size: 14,
                           color: DesignSystem.textSecondaryLight,
                         ),
-                      ),
-                    ],
-                  ),
-                  // Additional details can go here
-                ],
+                        const SizedBox(width: 4),
+                        Text(
+                          report.reportDate,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: DesignSystem.textSecondaryLight,
+                              ),
+                        ),
+                      ],
+                    ),
+                    // Additional details can go here
+                  ],
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
