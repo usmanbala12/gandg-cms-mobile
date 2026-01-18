@@ -32,4 +32,18 @@ abstract class ProfileRepository {
 
   /// Clear media cache (downloaded files).
   Future<void> clearMediaCache();
+
+  /// Update current user's profile.
+  /// Returns the updated profile entity.
+  Future<RepositoryResult<UserProfileEntity>> updateProfile({
+    required String fullName,
+    required String email,
+  });
+
+  /// Change current user's password.
+  Future<RepositoryResult<void>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  });
 }

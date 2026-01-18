@@ -835,14 +835,14 @@ class ApiClient {
   /// Fetch requests pending the current user's approval.
   Future<List<Map<String, dynamic>>> fetchPendingApprovals({
     String? projectId,
-    int limit = 50,
-    int offset = 0,
+    int page = 0,
+    int size = 50,
   }) async {
     try {
       final queryParams = {
         'approver_id': 'me',
-        'limit': limit,
-        'offset': offset,
+        'page': page,
+        'size': size,
         if (projectId != null) 'project_id': projectId,
       };
 
@@ -989,6 +989,61 @@ class ApiClient {
       );
     } catch (e) {
       logger.e('Error deleting notification $notificationId: $e');
+      rethrow;
+    }
+  }
+
+  // ========== USER ENDPOINTS ==========
+
+  /// Search users with pagination and filtering.
+  /// Endpoint: GET /api/v1/users
+  /// Requires USER:READ permission.
+  Future<Map<String, dynamic>> searchUsers({
+    int page = 0,
+    int size = 10,
+    String? query,
+    String sortBy = 'createdAt',
+    String sortDirection = 'desc',
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'size': size,
+        'sortBy': sortBy,
+        'sortDirection': sortDirection,
+        if (query != null && query.isNotEmpty) 'query': query,
+      };
+
+      final response = await dio.get(
+        '/api/v1/users',
+        queryParameters: queryParams,
+      );
+      logger.i('Searched users: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return _unwrapMap(response.data);
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error searching users: $e');
+      rethrow;
+    }
+  }
+
+  /// Get a specific user by ID.
+  /// Endpoint: GET /api/v1/users/{id}
+  /// Requires USER:READ permission.
+  Future<Map<String, dynamic>> getUserById(String userId) async {
+    try {
+      final response = await dio.get('/api/v1/users/$userId');
+      logger.i('Fetched user $userId: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        return _unwrapMap(response.data);
+      }
+      return {};
+    } catch (e) {
+      logger.e('Error fetching user $userId: $e');
       rethrow;
     }
   }

@@ -75,14 +75,14 @@ class RequestRepositoryImpl implements RequestRepository {
   @override
   Future<RepositoryResult<List<RequestEntity>>> getPendingApprovals({
     String? projectId,
-    int limit = 50,
-    int offset = 0,
+    int page = 0,
+    int size = 50,
   }) async {
     try {
       final remoteData = await remoteDataSource.fetchPendingApprovals(
         projectId: projectId,
-        limit: limit,
-        offset: offset,
+        page: page,
+        size: size,
       );
       
       final requests = remoteData

@@ -18,8 +18,8 @@ abstract class RequestRepository {
   /// Get pending approvals for current user
   Future<RepositoryResult<List<RequestEntity>>> getPendingApprovals({
     String? projectId,
-    int limit = 50,
-    int offset = 0,
+    int page = 0,
+    int size = 50,
   });
 
   /// Create a new request

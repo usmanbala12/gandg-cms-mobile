@@ -17,4 +17,7 @@ class UserDao extends DatabaseAccessor<AppDatabase> with _$UserDaoMixin {
 
   Stream<UserTableData?> watchCurrentUser() =>
       select(users).watchSingleOrNull();
+
+  Future<void> upsertUser(UsersCompanion user) =>
+      into(users).insertOnConflictUpdate(user);
 }

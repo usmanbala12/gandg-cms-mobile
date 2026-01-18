@@ -3,6 +3,8 @@ import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 
 import 'package:field_link/features/issues/domain/repositories/issue_repository.dart';
+import 'package:field_link/features/issues/data/models/user_search_model.dart';
+import 'package:field_link/features/issues/presentation/widgets/user_search_delegate.dart';
 import 'package:field_link/features/media/presentation/widgets/media_picker.dart';
 import 'package:field_link/features/media/presentation/cubit/media_uploader_cubit.dart';
 import 'package:field_link/features/media/domain/repositories/media_repository.dart';
@@ -25,6 +27,7 @@ class _IssueCreatePageState extends State<IssueCreatePage> {
 
   String _priority = 'MEDIUM';
   DateTime? _dueDate;
+  UserSearchModel? _selectedAssignee;
   bool _isSubmitting = false;
 
   final _repository = GetIt.I<IssueRepository>();
@@ -63,6 +66,7 @@ class _IssueCreatePageState extends State<IssueCreatePage> {
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         priority: _priority,
+        assigneeId: _selectedAssignee?.id,
         category: _categoryController.text.trim().isEmpty
             ? null
             : _categoryController.text.trim(),
@@ -177,6 +181,14 @@ class _IssueCreatePageState extends State<IssueCreatePage> {
                 hintText: 'e.g., Electrical, Plumbing',
                 border: OutlineInputBorder(),
               ),
+            ),
+            const SizedBox(height: 16),
+            UserAssigneeField(
+              selectedUser: _selectedAssignee,
+              onUserSelected: (user) {
+                setState(() => _selectedAssignee = user);
+              },
+              label: 'Assignee (Optional)',
             ),
             const SizedBox(height: 16),
             ListTile(

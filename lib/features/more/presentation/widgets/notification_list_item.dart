@@ -77,28 +77,6 @@ class NotificationListItem extends StatelessWidget {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  // Show URL indicator if present
-                  if (notification.url != null && notification.url!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.arrow_forward,
-                            size: 12,
-                            color: theme.colorScheme.primary,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Tap to view',
-                            style: TextStyle(
-                              color: theme.colorScheme.primary,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                 ],
               ),
             ),

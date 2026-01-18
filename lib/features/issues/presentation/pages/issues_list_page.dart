@@ -71,6 +71,8 @@ class _IssuesListPageState extends State<IssuesListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     if (_projectId == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
@@ -78,12 +80,18 @@ class _IssuesListPageState extends State<IssuesListPage> {
     return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         appBar: AppBar(
+          elevation: 0,
+          scrolledUnderElevation: 0,
           title: _isSearching
               ? TextField(
                   controller: _searchController,
                   autofocus: true,
-                  decoration: const InputDecoration(
+                  style: theme.textTheme.bodyLarge,
+                  decoration: InputDecoration(
                     hintText: 'Search issues...',
+                    hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                      color: DesignSystem.textSecondaryLight,
+                    ),
                     border: InputBorder.none,
                   ),
                   onChanged: (value) {
@@ -93,10 +101,18 @@ class _IssuesListPageState extends State<IssuesListPage> {
                     _updateFilters();
                   },
                 )
-              : Text('Issues', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+              : Text(
+                  'Issues',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
           actions: [
             IconButton(
-              icon: Icon(_isSearching ? Icons.close : Icons.search),
+              icon: Icon(
+                _isSearching ? Icons.close_rounded : Icons.search_rounded,
+                color: _isSearching ? DesignSystem.error : null,
+              ),
               onPressed: () {
                 setState(() {
                   _isSearching = !_isSearching;
@@ -108,6 +124,7 @@ class _IssuesListPageState extends State<IssuesListPage> {
                 });
               },
             ),
+            const SizedBox(width: 8),
           ],
         ),
         body: Column(
@@ -140,31 +157,57 @@ class _IssuesListPageState extends State<IssuesListPage> {
                 builder: (context, state) {
                   if (state is IssuesError) {
                     return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 64,
-                            color: DesignSystem.error,
-                          ),
-                          const SizedBox(height: 16),
-                          Text('Error', style: Theme.of(context).textTheme.titleLarge),
-                          const SizedBox(height: 8),
-                          Text(
-                            state.message,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 24),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              _bloc.add(LoadIssues(projectId: _projectId!));
-                            },
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('Retry'),
-                          ),
-                        ],
+                      child: Padding(
+                        padding: const EdgeInsets.all(DesignSystem.spacingL),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                color: DesignSystem.error.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.error_outline_rounded,
+                                size: 64,
+                                color: DesignSystem.error,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              'Something went wrong',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              state.message,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: DesignSystem.textSecondaryLight,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 32),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                _bloc.add(LoadIssues(projectId: _projectId!));
+                              },
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 32,
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('Try Again'),
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   }
@@ -180,15 +223,22 @@ class _IssuesListPageState extends State<IssuesListPage> {
                         if (state.errorMessage != null)
                           Container(
                             width: double.infinity,
+                            margin: const EdgeInsets.all(16),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 16,
                               vertical: 12,
                             ),
-                            color: DesignSystem.error.withValues(alpha: 0.1),
+                            decoration: BoxDecoration(
+                              color: DesignSystem.error.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: DesignSystem.error.withValues(alpha: 0.2),
+                              ),
+                            ),
                             child: Row(
                               children: [
                                 Icon(
-                                  Icons.cloud_off,
+                                  Icons.cloud_off_rounded,
                                   size: 20,
                                   color: DesignSystem.error,
                                 ),
@@ -196,8 +246,9 @@ class _IssuesListPageState extends State<IssuesListPage> {
                                 Expanded(
                                   child: Text(
                                     state.errorMessage!,
-                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    style: theme.textTheme.bodySmall?.copyWith(
                                       color: DesignSystem.error,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ),
@@ -209,33 +260,42 @@ class _IssuesListPageState extends State<IssuesListPage> {
                         Expanded(
                           child: state.issues.isEmpty
                               ? Center(
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.assignment_outlined,
-                                        size: 64,
-                                        color: DesignSystem.textSecondaryLight,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        'No issues found',
-                                        style: Theme.of(context).textTheme.titleMedium
-                                            ?.copyWith(
-                                              color: DesignSystem.textSecondaryLight,
-                                            ),
-                                      ),
-                                      if (_projectId == null) ...[
-                                        const SizedBox(height: 8),
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(32.0),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(24),
+                                          decoration: BoxDecoration(
+                                            color: DesignSystem.primary.withValues(alpha: 0.05),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.assignment_rounded,
+                                            size: 80,
+                                            color: DesignSystem.primary.withValues(alpha: 0.2),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 24),
                                         Text(
-                                          'Please select a project from the dashboard',
-                                          style: Theme.of(context).textTheme.bodySmall
-                                              ?.copyWith(
-                                                color: DesignSystem.textSecondaryLight,
+                                          'No issues found',
+                                          style: theme.textTheme.titleLarge?.copyWith(
+                                                fontWeight: FontWeight.bold,
                                               ),
                                         ),
+                                        const SizedBox(height: 12),
+                                        Text(
+                                          _projectId == null
+                                              ? 'Please select a project from the dashboard'
+                                              : 'Try adjusting your search or filters to find what you\'re looking for.',
+                                          style: theme.textTheme.bodyMedium?.copyWith(
+                                                color: DesignSystem.textSecondaryLight,
+                                              ),
+                                          textAlign: TextAlign.center,
+                                        ),
                                       ],
-                                    ],
+                                    ),
                                   ),
                                 )
                               : NotificationListener<ScrollNotification>(
@@ -247,15 +307,16 @@ class _IssuesListPageState extends State<IssuesListPage> {
                                         }
                                       },
                                       color: DesignSystem.primary,
+                                      edgeOffset: 20,
                                       child: ListView.builder(
-                                        padding: const EdgeInsets.only(top: 8),
+                                        padding: const EdgeInsets.only(top: 8, bottom: 80),
                                         itemCount: state.hasReachedMax
                                             ? state.issues.length
                                             : state.issues.length + 1,
                                         itemBuilder: (context, index) {
                                           if (index >= state.issues.length) {
                                             return const Padding(
-                                              padding: EdgeInsets.symmetric(vertical: 16.0),
+                                              padding: EdgeInsets.symmetric(vertical: 32.0),
                                               child: Center(
                                                 child: CircularProgressIndicator(),
                                               ),
@@ -291,9 +352,10 @@ class _IssuesListPageState extends State<IssuesListPage> {
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton(
+        floatingActionButton: FloatingActionButton.extended(
           backgroundColor: DesignSystem.primary,
           foregroundColor: DesignSystem.onPrimary,
+          elevation: 4,
           onPressed: () {
             Navigator.push(
               context,
@@ -302,7 +364,8 @@ class _IssuesListPageState extends State<IssuesListPage> {
               ),
             );
           },
-          child: const Icon(Icons.add),
+          icon: const Icon(Icons.add_rounded),
+          label: const Text('New Issue', style: TextStyle(fontWeight: FontWeight.bold)),
         ),
       );
   }

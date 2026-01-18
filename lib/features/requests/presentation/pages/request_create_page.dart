@@ -43,7 +43,6 @@ class _RequestCreateViewState extends State<_RequestCreateView> {
   final _amountController = TextEditingController();
   String _selectedType = 'FUNDS';
   String _selectedPriority = 'MEDIUM';
-  String _selectedCurrency = 'USD';
 
   @override
   void dispose() {
@@ -65,7 +64,6 @@ class _RequestCreateViewState extends State<_RequestCreateView> {
             amount: _selectedType == 'FUNDS'
                 ? double.tryParse(_amountController.text)
                 : null,
-            currency: _selectedType == 'FUNDS' ? _selectedCurrency : null,
             isDraft: asDraft,
           );
     }
@@ -169,59 +167,28 @@ class _RequestCreateViewState extends State<_RequestCreateView> {
                 },
               ),
 
-              // Amount for FUNDS type
+              // Amount for FUNDS type (currency is always NGN, set by backend)
               if (_selectedType == 'FUNDS') ...[
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: TextFormField(
-                        controller: _amountController,
-                        decoration: InputDecoration(
-                          labelText: 'Amount',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          prefixIcon: const Icon(Icons.attach_money),
-                        ),
-                        keyboardType: TextInputType.number,
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Required';
-                          }
-                          if (double.tryParse(value) == null) {
-                            return 'Invalid number';
-                          }
-                          return null;
-                        },
-                      ),
+                TextFormField(
+                  controller: _amountController,
+                  decoration: InputDecoration(
+                    labelText: 'Amount (NGN)',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      flex: 1,
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedCurrency,
-                        decoration: InputDecoration(
-                          labelText: 'Currency',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        items: ['USD', 'EUR', 'GBP', 'NGN']
-                            .map((c) => DropdownMenuItem(
-                                  value: c,
-                                  child: Text(c),
-                                ))
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedCurrency = value!;
-                          });
-                        },
-                      ),
-                    ),
-                  ],
+                    prefixIcon: const Icon(Icons.attach_money),
+                  ),
+                  keyboardType: TextInputType.number,
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Required';
+                    }
+                    if (double.tryParse(value) == null) {
+                      return 'Invalid number';
+                    }
+                    return null;
+                  },
                 ),
               ],
 

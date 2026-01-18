@@ -62,5 +62,92 @@ class ProfileRemoteDataSource {
     }
   }
 
+  /// Update current user's profile.
+  /// Calls PATCH /api/v1/users/me
+  Future<UserProfileModel> updateProfile({
+    required String fullName,
+    required String email,
+  }) async {
+    try {
+      print('🌐 [DataSource] Calling PATCH /api/v1/users/me');
+      final response = await dio.patch(
+        '/api/v1/users/me',
+        data: {
+          'fullName': fullName,
+          'email': email,
+        },
+      );
+      print(
+          '✅ [DataSource] PATCH /api/v1/users/me success. Status: ${response.statusCode}');
+
+      if (response.data == null) {
+        throw Exception('Response data is null');
+      }
+
+      final Map<String, dynamic> dataMap;
+      if (response.data is Map && (response.data as Map).containsKey('data')) {
+        final inner = (response.data as Map)['data'];
+        dataMap = inner is Map<String, dynamic>
+            ? inner
+            : response.data as Map<String, dynamic>;
+      } else {
+        dataMap = response.data as Map<String, dynamic>;
+      }
+
+      return UserProfileModel.fromJson(dataMap);
+    } on DioException catch (e) {
+      print('❌ [DataSource] DioException in updateProfile: ${e.message}');
+      // Handle specific error codes
+      if (e.response?.statusCode == 409) {
+        throw Exception('Email is already in use');
+      }
+      throw Exception('Failed to update profile: ${e.message}');
+    } catch (e) {
+      print('❌ [DataSource] Unexpected error in updateProfile: $e');
+      rethrow;
+    }
+  }
+
+  /// Change current user's password.
+  /// Calls PUT /api/v1/users/me/password
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    try {
+      print('🌐 [DataSource] Calling PUT /api/v1/users/me/password');
+      final response = await dio.put(
+        '/api/v1/users/me/password',
+        data: {
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+          'confirmPassword': confirmPassword,
+        },
+      );
+      print(
+          '✅ [DataSource] PUT /api/v1/users/me/password success. Status: ${response.statusCode}');
+    } on DioException catch (e) {
+      print('❌ [DataSource] DioException in changePassword: ${e.message}');
+      // Handle specific error codes
+      final statusCode = e.response?.statusCode;
+      final errorData = e.response?.data;
+      
+      if (statusCode == 400) {
+        final message = errorData is Map ? errorData['message'] ?? errorData['error'] : null;
+        if (message != null && message.toString().toLowerCase().contains('current password')) {
+          throw Exception('Current password is incorrect');
+        }
+        if (message != null && message.toString().toLowerCase().contains('match')) {
+          throw Exception('New password and confirmation do not match');
+        }
+        throw Exception(message ?? 'Invalid password data');
+      }
+      throw Exception('Failed to change password: ${e.message}');
+    } catch (e) {
+      print('❌ [DataSource] Unexpected error in changePassword: $e');
+      rethrow;
+    }
+  }
 }
 

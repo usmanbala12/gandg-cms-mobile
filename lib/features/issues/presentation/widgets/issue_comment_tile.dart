@@ -1,5 +1,6 @@
+import 'package:field_link/core/utils/theme/design_system.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 import '../../domain/entities/issue_comment_entity.dart';
 
@@ -16,91 +17,61 @@ class IssueCommentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dateFormat = DateFormat.yMMMd().add_jm();
+    final isDark = theme.brightness == Brightness.dark;
+    final isActivity = comment.type != 'COMMENT' && comment.type != null;
+
+    if (isActivity) {
+      return _buildActivityTile(context);
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: isCurrentUser
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
+        mainAxisAlignment: isCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
-          if (!isCurrentUser) ...[
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: comment.type != 'COMMENT' && comment.type != null
-                  ? theme.colorScheme.secondaryContainer
-                  : theme.colorScheme.primaryContainer,
-              child: Builder(
-                builder: (context) {
-                  final displayName = comment.author?['fullName']?.toString() ??
-                      (comment.author?['firstName'] != null
-                          ? '${comment.author!['firstName']} ${comment.author!['lastName'] ?? ''}'
-                          : null) ??
-                      comment.authorId;
-                  final initial = displayName.isNotEmpty ? displayName.substring(0, 1).toUpperCase() : '?';
-                  return Text(
-                    initial,
-                    style: TextStyle(
-                      color: comment.type != 'COMMENT' && comment.type != null
-                          ? theme.colorScheme.onSecondaryContainer
-                          : theme.colorScheme.onPrimaryContainer,
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
+          if (!isCurrentUser) _buildAvatar(context),
+          const SizedBox(width: 8),
           Flexible(
             child: Column(
-              crossAxisAlignment: isCurrentUser
-                  ? CrossAxisAlignment.end
-                  : CrossAxisAlignment.start,
+              crossAxisAlignment: isCurrentUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isCurrentUser
-                        ? theme.colorScheme.primaryContainer
-                        : theme.colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12).copyWith(
-                      topLeft: isCurrentUser
-                          ? const Radius.circular(12)
-                          : const Radius.circular(0),
-                      topRight: isCurrentUser
-                          ? const Radius.circular(0)
-                          : const Radius.circular(12),
+                if (!isCurrentUser)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 4),
+                    child: Text(
+                      _getAuthorName(),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: DesignSystem.primary,
+                      ),
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (!isCurrentUser && comment.author != null)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: Text(
-                            comment.author?['fullName']?.toString() ??
-                                '${comment.author!['firstName']} ${comment.author!['lastName'] ?? ''}',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                        ),
-                      Text(
-                        comment.content,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: isCurrentUser
-                              ? theme.colorScheme.onPrimaryContainer
-                              : theme.colorScheme.onSurfaceVariant,
-                          fontStyle: comment.type != 'COMMENT' && comment.type != null
-                              ? FontStyle.italic
-                              : null,
-                        ),
-                      ),
-                    ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isCurrentUser
+                        ? DesignSystem.primary
+                        : (isDark ? DesignSystem.surfaceDark : DesignSystem.surfaceLight),
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(16),
+                      topRight: const Radius.circular(16),
+                      bottomLeft: Radius.circular(isCurrentUser ? 16 : 4),
+                      bottomRight: Radius.circular(isCurrentUser ? 4 : 16),
+                    ),
+                    boxShadow: DesignSystem.shadowSm,
+                    border: isCurrentUser 
+                        ? null 
+                        : Border.all(color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05)),
+                  ),
+                  child: Text(
+                    comment.content,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: isCurrentUser 
+                          ? Colors.white 
+                          : (isDark ? DesignSystem.textPrimaryDark : DesignSystem.textPrimaryLight),
+                      height: 1.4,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -108,20 +79,15 @@ class IssueCommentTile extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (comment.isPending)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: Icon(
-                          Icons.sync,
-                          size: 12,
-                          color: theme.colorScheme.outline,
-                        ),
+                      const Padding(
+                        padding: EdgeInsets.only(right: 4),
+                        child: Icon(Icons.sync_rounded, size: 10, color: DesignSystem.textSecondaryLight),
                       ),
                     Text(
-                      dateFormat.format(
-                        DateTime.fromMillisecondsSinceEpoch(comment.createdAt),
-                      ),
+                      timeago.format(DateTime.fromMillisecondsSinceEpoch(comment.createdAt)),
                       style: theme.textTheme.labelSmall?.copyWith(
-                        color: theme.colorScheme.outline,
+                        color: DesignSystem.textSecondaryLight,
+                        fontSize: 10,
                       ),
                     ),
                   ],
@@ -131,19 +97,76 @@ class IssueCommentTile extends StatelessWidget {
           ),
           if (isCurrentUser) ...[
             const SizedBox(width: 8),
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: theme.colorScheme.primary,
-              child: Text(
-                (comment.authorId.isNotEmpty ? comment.authorId : '?')
-                    .substring(0, 1)
-                    .toUpperCase(),
-                style: TextStyle(color: theme.colorScheme.onPrimary),
-              ),
-            ),
+            _buildAvatar(context),
           ],
         ],
       ),
     );
+  }
+
+  Widget _buildAvatar(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    return Container(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: DesignSystem.primary.withValues(alpha: 0.2),
+          width: 2,
+        ),
+      ),
+      child: CircleAvatar(
+        radius: 16,
+        backgroundColor: isCurrentUser 
+            ? DesignSystem.primary.withValues(alpha: 0.1) 
+            : (isDark ? DesignSystem.surfaceSelectedDark : DesignSystem.surfaceSelectedLight),
+        child: Text(
+          _getInitials(),
+          style: TextStyle(
+            color: DesignSystem.primary,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActivityTile(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 32),
+      child: Row(
+        children: [
+          const Expanded(child: Divider(endIndent: 16)),
+          Text(
+            comment.content,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: DesignSystem.textSecondaryLight,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+          const Expanded(child: Divider(indent: 16)),
+        ],
+      ),
+    );
+  }
+
+  String _getAuthorName() {
+    return comment.author?['fullName']?.toString() ??
+        (comment.author?['firstName'] != null
+            ? '${comment.author!['firstName']} ${comment.author!['lastName'] ?? ''}'.trim()
+            : comment.authorId);
+  }
+
+  String _getInitials() {
+    final name = _getAuthorName().trim();
+    if (name.isEmpty) return '?';
+    final parts = name.split(RegExp(r'\s+'));
+    if (parts.length > 1 && parts[0].isNotEmpty && parts[1].isNotEmpty) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name[0].toUpperCase();
   }
 }

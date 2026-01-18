@@ -305,7 +305,10 @@ class IssueRepositoryImpl implements IssueRepository {
     }
 
     try {
-      await remoteDataSource.assignIssue(localId, {'assignee_id': assigneeId});
+      await remoteDataSource.assignIssue(localId, {
+        'assigneeId': assigneeId,
+        'comment': null,
+      });
       logger.i('✅ Issue assigned: $localId -> $assigneeId');
     } catch (e) {
       logger.e('Error assigning issue: $e');

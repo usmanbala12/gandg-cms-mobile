@@ -2,6 +2,7 @@ import 'package:field_link/app_home.dart';
 import 'package:field_link/core/di/injection_container.dart';
 import 'package:field_link/core/utils/theme/theme.dart';
 import 'package:field_link/features/authentication/presentation/bloc/auth/auth_bloc.dart';
+import 'package:field_link/features/authentication/presentation/bloc/auth/auth_event.dart';
 import 'package:field_link/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:field_link/features/settings/presentation/cubit/settings_cubit.dart';
 import 'package:flutter/material.dart';
@@ -16,7 +17,7 @@ class App extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider<AuthBloc>(
-          create: (_) => sl<AuthBloc>(),
+          create: (_) => sl<AuthBloc>()..add(const AppStarted()),
         ),
         BlocProvider<SettingsCubit>(
           create: (_) => sl<SettingsCubit>()..loadStorageInfo(),

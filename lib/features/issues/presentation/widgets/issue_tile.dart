@@ -2,7 +2,7 @@ import 'package:field_link/core/presentation/widgets/custom_card.dart';
 import 'package:field_link/core/presentation/widgets/status_badge.dart';
 import 'package:field_link/core/utils/theme/design_system.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 import '../../domain/entities/issue_entity.dart';
 
@@ -15,7 +15,7 @@ class IssueTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dateFormat = DateFormat.yMMMd();
+    final isDark = theme.brightness == Brightness.dark;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -25,96 +25,97 @@ class IssueTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header Row: Issue Number & Status
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (issue.issueNumber != null)
-                        Text(
-                          '#${issue.issueNumber}',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: DesignSystem.primary,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      Text(
-                        issue.title,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: DesignSystem.textPrimaryLight,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                if (issue.issueNumber != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: DesignSystem.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(DesignSystem.radiusS),
+                    ),
+                    child: Text(
+                      '#${issue.issueNumber}',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: DesignSystem.primary,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
+                    ),
+                  )
+                else
+                  const SizedBox.shrink(),
                 StatusBadge(status: issue.status ?? 'OPEN'),
               ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+
+            // Title
+            Text(
+              issue.title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: isDark ? DesignSystem.textPrimaryDark : DesignSystem.textPrimaryLight,
+                fontSize: 17,
+              ),
+            ),
+            
+            // Description
             if (issue.description != null && issue.description!.isNotEmpty) ...[
+              const SizedBox(height: 6),
               Text(
                 issue.description!,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: DesignSystem.textSecondaryLight,
+                  color: isDark ? DesignSystem.textSecondaryDark : DesignSystem.textSecondaryLight,
+                  height: 1.4,
                 ),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 12),
             ],
-            const SizedBox(height: 4),
-            Row(
+            
+            const SizedBox(height: 16),
+            
+            // Footer with metadata chips
+            Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                _buildPriorityIcon(context, issue.priority),
-                const SizedBox(width: 4),
-                Text(
-                  issue.priority ?? 'MEDIUM',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: DesignSystem.textSecondaryLight,
+                // Priority Chip
+                _buildPriorityChip(context, issue.priority),
+                
+                // Assignee
+                if (issue.assignee != null || issue.assigneeId != null)
+                  _buildMetaItem(
+                    context,
+                    icon: Icons.person_outline_rounded,
+                    label: issue.assignee != null
+                        ? '${issue.assignee!['firstName'] ?? ''}'.trim()
+                        : (issue.assigneeId!.length > 8
+                            ? '${issue.assigneeId!.substring(0, 8)}...'
+                            : issue.assigneeId!),
                   ),
-                ),
-                const SizedBox(width: 12),
-                if (issue.assigneeId != null) ...[
-                  Icon(
-                    Icons.person_outline,
-                    size: 14,
-                    color: DesignSystem.textSecondaryLight,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    issue.assigneeId!.length > 10
-                        ? '${issue.assigneeId!.substring(0, 10)}...'
-                        : issue.assigneeId!,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: DesignSystem.textSecondaryLight,
-                    ),
-                  ),
-                ],
-                const Spacer(),
-                if (issue.isPending)
-                  Icon(Icons.sync, size: 16, color: DesignSystem.primary)
-                else if (issue.hasConflict)
-                  Icon(
-                    Icons.error_outline,
-                    size: 16,
-                    color: DesignSystem.error,
-                  ),
-                if (issue.isPending || issue.hasConflict)
-                  const SizedBox(width: 4),
-                Text(
-                  dateFormat.format(
+                
+                // Relative Date
+                _buildMetaItem(
+                  context,
+                  icon: Icons.access_time_rounded,
+                  label: timeago.format(
                     DateTime.fromMillisecondsSinceEpoch(issue.createdAt),
                   ),
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: DesignSystem.textSecondaryLight,
-                  ),
                 ),
+                
+                // Sync status indicator
+                if (issue.isPending)
+                  const _SyncIndicator(icon: Icons.sync, color: DesignSystem.primary)
+                else if (issue.hasConflict)
+                  const _SyncIndicator(icon: Icons.error_outline_rounded, color: DesignSystem.error),
               ],
             ),
           ],
@@ -123,32 +124,102 @@ class IssueTile extends StatelessWidget {
     );
   }
 
-  Widget _buildPriorityIcon(BuildContext context, String? priority) {
-    IconData icon;
-    Color color;
+  Widget _buildPriorityChip(BuildContext context, String? priority) {
+    final color = _getPriorityColor(priority);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.2), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_getPriorityIcon(priority), size: 14, color: color),
+          const SizedBox(width: 4),
+          Text(
+            (priority ?? 'MEDIUM').toUpperCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
 
+  Widget _buildMetaItem(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = isDark ? DesignSystem.textSecondaryDark : DesignSystem.textSecondaryLight;
+    
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
+        ),
+      ],
+    );
+  }
+
+  IconData _getPriorityIcon(String? priority) {
     switch (priority?.toUpperCase()) {
       case 'CRITICAL':
-        icon = Icons.priority_high;
-        color = DesignSystem.error;
-        break;
+        return Icons.warning_amber_rounded;
       case 'HIGH':
-        icon = Icons.arrow_upward;
-        color = DesignSystem.error;
-        break;
+        return Icons.keyboard_double_arrow_up_rounded;
       case 'MEDIUM':
-        icon = Icons.remove;
-        color = DesignSystem.warning;
-        break;
+        return Icons.remove_rounded;
       case 'LOW':
-        icon = Icons.arrow_downward;
-        color = DesignSystem.success;
-        break;
+        return Icons.keyboard_arrow_down_rounded;
       default:
-        icon = Icons.remove;
-        color = DesignSystem.textSecondaryLight;
+        return Icons.remove_rounded;
     }
+  }
 
-    return Icon(icon, size: 16, color: color);
+  Color _getPriorityColor(String? priority) {
+    switch (priority?.toUpperCase()) {
+      case 'CRITICAL':
+      case 'HIGH':
+        return DesignSystem.error;
+      case 'MEDIUM':
+        return DesignSystem.warning;
+      case 'LOW':
+        return DesignSystem.success;
+      default:
+        return DesignSystem.textSecondaryLight;
+    }
+  }
+}
+
+class _SyncIndicator extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+
+  const _SyncIndicator({required this.icon, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, size: 12, color: color),
+    );
   }
 }

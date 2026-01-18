@@ -41,7 +41,9 @@ class AppHome extends StatelessWidget {
                 create: (_) => sl<RequestCreateCubit>(),
               ),
               BlocProvider<NotificationsCubit>(
-                create: (_) => sl<NotificationsCubit>(),
+                create: (_) => sl<NotificationsCubit>()
+                  ..fetchUnreadCount()
+                  ..startPolling(seconds: 60),
               ),
               BlocProvider<ReportsCubit>(
                 create: (context) => sl<ReportsCubit>(

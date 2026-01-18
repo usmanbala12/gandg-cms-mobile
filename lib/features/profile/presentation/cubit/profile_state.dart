@@ -26,6 +26,8 @@ class ProfileLoaded extends ProfileState {
   final bool isRefreshingUser;
   final bool isSyncing;
   final bool isClearingCache;
+  final bool isUpdatingProfile;
+  final bool isChangingPassword;
   final String? message;
 
   const ProfileLoaded({
@@ -35,6 +37,8 @@ class ProfileLoaded extends ProfileState {
     this.isRefreshingUser = false,
     this.isSyncing = false,
     this.isClearingCache = false,
+    this.isUpdatingProfile = false,
+    this.isChangingPassword = false,
     this.message,
   });
 
@@ -45,6 +49,8 @@ class ProfileLoaded extends ProfileState {
     bool? isRefreshingUser,
     bool? isSyncing,
     bool? isClearingCache,
+    bool? isUpdatingProfile,
+    bool? isChangingPassword,
     String? message,
   }) {
     return ProfileLoaded(
@@ -54,6 +60,8 @@ class ProfileLoaded extends ProfileState {
       isRefreshingUser: isRefreshingUser ?? this.isRefreshingUser,
       isSyncing: isSyncing ?? this.isSyncing,
       isClearingCache: isClearingCache ?? this.isClearingCache,
+      isUpdatingProfile: isUpdatingProfile ?? this.isUpdatingProfile,
+      isChangingPassword: isChangingPassword ?? this.isChangingPassword,
       message: message,
     );
   }
@@ -66,6 +74,8 @@ class ProfileLoaded extends ProfileState {
         isRefreshingUser,
         isSyncing,
         isClearingCache,
+        isUpdatingProfile,
+        isChangingPassword,
         message,
       ];
 }

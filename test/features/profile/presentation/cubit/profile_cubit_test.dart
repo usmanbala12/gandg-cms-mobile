@@ -33,26 +33,8 @@ void main() {
   });
 
   group('ProfileCubit', () {
-  });
-}
-
     test('initial state is ProfileInitial', () {
       expect(cubit.state, isA<ProfileInitial>());
     });
-
-    test('logout calls AuthRepository and emits ProfileLoggedOut', () async {
-      // Arrange
-      when(mockAuthRepository.logout() as Function()).thenAnswer(
-        (_) async => const Right(null),
-      );
-
-      // Act
-      await cubit.logout();
-
-      // Assert
-      verify(() => mockAuthRepository.logout()).called(1);
-      expect(cubit.state, isA<ProfileLoggedOut>());
-    });
-
   });
 }

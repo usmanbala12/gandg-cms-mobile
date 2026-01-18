@@ -197,4 +197,37 @@ class IssueRemoteDataSource {
       rethrow;
     }
   }
+
+  /// Search users for issue assignment.
+  /// Returns paginated user data.
+  Future<Map<String, dynamic>> searchUsers({
+    int page = 0,
+    int size = 10,
+    String? query,
+    String sortBy = 'fullName',
+    String sortDirection = 'asc',
+  }) async {
+    try {
+      return await apiClient.searchUsers(
+        page: page,
+        size: size,
+        query: query,
+        sortBy: sortBy,
+        sortDirection: sortDirection,
+      );
+    } catch (e) {
+      logger.e('Error searching users: $e');
+      rethrow;
+    }
+  }
+
+  /// Get a specific user by ID.
+  Future<Map<String, dynamic>> getUserById(String userId) async {
+    try {
+      return await apiClient.getUserById(userId);
+    } catch (e) {
+      logger.e('Error fetching user: $e');
+      rethrow;
+    }
+  }
 }

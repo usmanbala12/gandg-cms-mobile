@@ -7,8 +7,9 @@ import '../../../more/presentation/pages/settings_page.dart';
 import '../cubit/profile_cubit.dart';
 import '../widgets/logout_section.dart';
 import '../widgets/profile_header.dart';
-import '../widgets/storage_management_section.dart';
 import '../widgets/sync_status_section.dart';
+import 'edit_profile_page.dart';
+import 'change_password_page.dart';
 
 /// Main profile screen displaying user info, preferences, sync status, and storage management.
 class ProfilePage extends StatelessWidget {
@@ -141,17 +142,9 @@ class _ProfilePageContent extends StatelessWidget {
                       },
                     ),
 
-                    // Storage management
-                    StorageManagementSection(
-                      storageStats: state.storageStats,
-                      isClearing: state.isClearingCache,
-                      onClearOldCache: () {
-                        context.read<ProfileCubit>().clearOldCache();
-                      },
-                      onClearMediaCache: () {
-                        context.read<ProfileCubit>().clearMediaCache();
-                      },
-                    ),
+                    // Account section (Edit Profile, Change Password)
+                    _buildAccountSection(context, state.user),
+
                     // Settings & About Section (moved from More tab)
                     _buildMenuSection(context),
 
@@ -206,7 +199,12 @@ class _ProfilePageContent extends StatelessWidget {
                   onTap: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const SettingsPage()),
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider.value(
+                          value: context.read<ProfileCubit>(),
+                          child: const SettingsPage(),
+                        ),
+                      ),
                     );
                   },
                 ),
@@ -231,6 +229,75 @@ class _ProfilePageContent extends StatelessWidget {
                         child: Icon(
                           Icons.build,
                           color: theme.colorScheme.onPrimary,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountSection(BuildContext context, dynamic user) {
+    final theme = Theme.of(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Account',
+            style: theme.textTheme.titleSmall?.copyWith(
+              color: theme.colorScheme.onSurface.withOpacity(0.6),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: theme.dividerColor),
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.edit_outlined),
+                  title: const Text('Edit Profile'),
+                  subtitle: const Text('Update your name and email'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: user != null
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => BlocProvider.value(
+                                value: context.read<ProfileCubit>(),
+                                child: EditProfilePage(user: user),
+                              ),
+                            ),
+                          );
+                        }
+                      : null,
+                ),
+                Divider(height: 1, color: theme.dividerColor),
+                ListTile(
+                  leading: const Icon(Icons.lock_outline),
+                  title: const Text('Change Password'),
+                  subtitle: const Text('Update your account password'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider.value(
+                          value: context.read<ProfileCubit>(),
+                          child: const ChangePasswordPage(),
                         ),
                       ),
                     );

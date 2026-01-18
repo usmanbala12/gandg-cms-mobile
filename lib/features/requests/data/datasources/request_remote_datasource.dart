@@ -87,13 +87,13 @@ class RequestRemoteDataSource {
 
   Future<List<Map<String, dynamic>>> fetchPendingApprovals({
     String? projectId,
-    int limit = 50,
-    int offset = 0,
+    int page = 0,
+    int size = 50,
   }) async {
     return await apiClient.fetchPendingApprovals(
       projectId: projectId,
-      limit: limit,
-      offset: offset,
+      page: page,
+      size: size,
     );
   }
 

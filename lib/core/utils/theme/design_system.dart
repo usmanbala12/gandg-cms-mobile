@@ -5,6 +5,7 @@ class DesignSystem {
 
   // -- Brand Colors --
   static const Color primary = Color(0xFF5E5CE6); // Deep Indigo
+  static const Color primaryLight = Color(0xFFACAAF2);
   static const Color onPrimary = Colors.white;
   
   static const Color secondary = Color(0xFF32D74B); // Vibrant Green (Success/Action)
@@ -15,9 +16,11 @@ class DesignSystem {
   // -- Background/Surface Colors --
   static const Color backgroundLight = Color(0xFFF8F9FA); // Soft off-white
   static const Color surfaceLight = Colors.white;
+  static const Color surfaceSelectedLight = Color(0xFFF0F0FF);
   
   static const Color backgroundDark = Color(0xFF121212); // Deep dark
   static const Color surfaceDark = Color(0xFF1E1E1E); // Lighter dark for cards
+  static const Color surfaceSelectedDark = Color(0xFF2C2C2E);
 
   // -- Text Colors --
   static const Color textPrimaryLight = Color(0xFF1C1C1E); // Almost black
@@ -48,6 +51,18 @@ class DesignSystem {
       offset: const Offset(0, 4),
     ),
   ];
+
+  static List<BoxShadow> get shadowLg => [
+    BoxShadow(
+      color: Colors.black.withValues(alpha: 0.12),
+      blurRadius: 16,
+      offset: const Offset(0, 8),
+    ),
+  ];
+
+  // -- Glassmorphism Colors --
+  static Color get glassWhite => Colors.white.withValues(alpha: 0.7);
+  static Color get glassBlack => Colors.black.withValues(alpha: 0.7);
 
   // -- Spacing & Dimensions --
   static const double spacingXS = 4.0;

@@ -21,7 +21,6 @@ class RequestCreateCubit extends Cubit<RequestCreateState> {
     required String priority,
     required String createdBy,
     double? amount,
-    String? currency,
     bool isDraft = false,
   }) async {
     emit(RequestCreateSubmitting());
@@ -35,7 +34,7 @@ class RequestCreateCubit extends Cubit<RequestCreateState> {
         title: title,
         description: description,
         amount: amount,
-        currency: currency,
+        // currency is set by backend automatically (NGN)
         priority: priority,
         status: isDraft ? 'DRAFT' : 'PENDING',
         createdBy: createdBy,

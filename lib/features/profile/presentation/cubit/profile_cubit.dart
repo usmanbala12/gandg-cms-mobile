@@ -224,6 +224,89 @@ class ProfileCubit extends Cubit<ProfileState> {
     }
   }
 
+  /// Update user profile (full name and email).
+  Future<void> updateProfile({
+    required String fullName,
+    required String email,
+  }) async {
+    if (state is! ProfileLoaded) return;
+
+    final currentState = state as ProfileLoaded;
+    emit(currentState.copyWith(isUpdatingProfile: true));
+
+    try {
+      logger.i('Updating user profile');
+      final result = await profileRepository.updateProfile(
+        fullName: fullName,
+        email: email,
+      );
+
+      if (result.hasError) {
+        emit(currentState.copyWith(
+          isUpdatingProfile: false,
+          message: result.message ?? 'Failed to update profile',
+        ));
+        return;
+      }
+
+      emit(currentState.copyWith(
+        user: result.data,
+        isUpdatingProfile: false,
+        message: 'Profile updated successfully',
+      ));
+
+      logger.i('Profile updated successfully');
+    } catch (e) {
+      logger.e('Error updating profile: $e');
+      emit(currentState.copyWith(
+        isUpdatingProfile: false,
+        message: 'Failed to update profile: $e',
+      ));
+    }
+  }
+
+  /// Change user password.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    if (state is! ProfileLoaded) return;
+
+    final currentState = state as ProfileLoaded;
+    emit(currentState.copyWith(isChangingPassword: true));
+
+    try {
+      logger.i('Changing user password');
+      final result = await profileRepository.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword,
+      );
+
+      if (result.hasError) {
+        emit(currentState.copyWith(
+          isChangingPassword: false,
+          message: result.message ?? 'Failed to change password',
+        ));
+        return;
+      }
+
+      emit(currentState.copyWith(
+        isChangingPassword: false,
+        message: 'Password changed successfully',
+      ));
+
+      logger.i('Password changed successfully');
+    } catch (e) {
+      logger.e('Error changing password: $e');
+      emit(currentState.copyWith(
+        isChangingPassword: false,
+        message: 'Failed to change password: $e',
+      ));
+    }
+  }
+
   @override
   Future<void> close() {
     _syncStatusSubscription?.cancel();

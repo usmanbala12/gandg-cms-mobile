@@ -204,12 +204,12 @@ class RequestModel extends RequestEntity {
   }
 
   /// Create payload for API request
+  /// Note: currency is no longer sent; backend sets it to NGN automatically
   Map<String, dynamic> toCreatePayload({bool isDraft = false}) {
     return {
       'type': type,
       'description': description,
       if (amount != null) 'amount': amount,
-      if (currency != null) 'currency': currency,
       if (priority != null) 'priority': priority,
       'isDraft': isDraft,
     };

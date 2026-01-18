@@ -189,4 +189,91 @@ class ProfileRepositoryImpl implements ProfileRepository {
     // No media cache in simplified version
     logger.i('Media cache clearing is a no-op in simplified offline mode');
   }
+
+  @override
+  Future<RepositoryResult<UserProfileEntity>> updateProfile({
+    required String fullName,
+    required String email,
+  }) async {
+    logger.d('updateProfile: Updating user profile');
+
+    try {
+      // Check network connectivity
+      if (!await networkInfo.isOnline()) {
+        return RepositoryResult.error(
+          const UserProfileEntity(
+            id: '',
+            fullName: 'Unknown',
+            email: '',
+          ),
+          'No internet connection. Please connect to update your profile.',
+        );
+      }
+
+      // Call remote API
+      final updatedProfile = await remoteDataSource.updateProfile(
+        fullName: fullName,
+        email: email,
+      );
+
+      // Update local database
+      await userDao.upsertUser(UsersCompanion(
+        id: Value(updatedProfile.id),
+        fullName: Value(updatedProfile.fullName),
+        email: Value(updatedProfile.email),
+        role: Value(updatedProfile.role ?? ''),
+        status: Value(updatedProfile.status ?? 'ACTIVE'),
+        mfaEnabled: Value(updatedProfile.mfaEnabled),
+        lastLoginAt: Value(updatedProfile.lastLoginAt),
+      ));
+
+      logger.i('Profile updated successfully: ${updatedProfile.fullName}');
+      return RepositoryResult.remote(updatedProfile);
+    } catch (e) {
+      logger.e('Error updating profile: $e');
+      return RepositoryResult.error(
+        const UserProfileEntity(
+          id: '',
+          fullName: 'Unknown',
+          email: '',
+        ),
+        'Failed to update profile: ${e.toString().replaceFirst('Exception: ', '')}',
+      );
+    }
+  }
+
+  @override
+  Future<RepositoryResult<void>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmPassword,
+  }) async {
+    logger.d('changePassword: Changing user password');
+
+    try {
+      // Check network connectivity
+      if (!await networkInfo.isOnline()) {
+        return RepositoryResult.error(
+          null,
+          'No internet connection. Please connect to change your password.',
+        );
+      }
+
+      // Call remote API
+      await remoteDataSource.changePassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+        confirmPassword: confirmPassword,
+      );
+
+      logger.i('Password changed successfully');
+      return RepositoryResult.remote(null);
+    } catch (e) {
+      logger.e('Error changing password: $e');
+      return RepositoryResult.error(
+        null,
+        e.toString().replaceFirst('Exception: ', ''),
+      );
+    }
+  }
 }
